@@ -1,14 +1,13 @@
 import { Tabs } from 'expo-router'
 import React from 'react'
-import { Image, ImageSourcePropType, Text, View } from 'react-native'
+import { Image, ImageSourcePropType, View } from 'react-native'
 
 type TabIconProps = {
     focused: boolean
     icon: ImageSourcePropType
-    title?: string
 }
 
-const TabIcon = ({ focused, icon, title }: TabIconProps) => {
+const TabIcon = ({ focused, icon}: TabIconProps) => {
     return (
         // centrat pe orizontală și vertical în zona butonului
         <View className="flex-row items-center justify-center">
@@ -25,6 +24,7 @@ const _layout = () => {
     return (
         <Tabs
             screenOptions={{
+                headerShown: false,
                 tabBarShowLabel: false,
                 tabBarItemStyle: {
                     // fiecare buton ocupă spațiul rămas și-și centerizează conținutul
@@ -55,40 +55,33 @@ const _layout = () => {
             <Tabs.Screen
                 name="index"
                 options={{
-                    headerShown: false,
-                    title: 'Home',
                     tabBarIcon: ({ focused }) => (
-                        <TabIcon focused={focused} icon={require('../../assets/icons/home_icon.png')} title="Home" />
+                        <TabIcon focused={focused} icon={require('../../assets/icons/home_icon.png')}/>
                     ),
                 }}
             />
             <Tabs.Screen
                 name="aiHelper"
                 options={{
-                    headerShown: false,
                     title: 'AI Gardener',
                     tabBarIcon: ({ focused }) => (
-                        <TabIcon focused={focused} icon={require('../../assets/icons/ai_icon.png')} title="AI Gardener" />
+                        <TabIcon focused={focused} icon={require('../../assets/icons/ai_icon.png')}/>
                     ),
                 }}
             />
             <Tabs.Screen
                 name="myPlants"
                 options={{
-                    headerShown: false,
-                    title: 'My Plants',
                     tabBarIcon: ({ focused }) => (
-                        <TabIcon focused={focused} icon={require('../../assets/icons/plants_icon.png')} title="Plants" />
+                        <TabIcon focused={focused} icon={require('../../assets/icons/plants_icon.png')}/>
                     ),
                 }}
             />
             <Tabs.Screen
                 name="account"
                 options={{
-                    headerShown: false,
-                    title: 'Account',
                     tabBarIcon: ({ focused }) => (
-                        <TabIcon focused={focused} icon={require('../../assets/icons/account_icon.png')} title="Account" />
+                        <TabIcon focused={focused} icon={require('../../assets/icons/account_icon.png')}/>
                     ),
                 }}
             />
