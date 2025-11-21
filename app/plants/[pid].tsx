@@ -4,7 +4,7 @@ import React from 'react'
 const PlantDetails = () => {
   return (
     <View>
-      <Text>PlantDetails</Text>
+      <Text>{pid}</Text>
     </View>
   )
 }
