@@ -13,14 +13,14 @@ export default function LoginScreen() {
     const navigation = useNavigation();
     const handleLogin = () => {
         //logica de validare
-        if (email.trim() === '' || password.trim() === '') {
-            alert('Please enter both email and password.');
-            return;
-        }
-        if (!/\S+@\S+\.\S+/.test(email)) {
-            alert('Please enter a valid email address.');
-            return;
-        }
+        // if (email.trim() === '' || password.trim() === '') {
+        //     alert('Please enter both email and password.');
+        //     return;
+        // }
+        // if (!/\S+@\S+\.\S+/.test(email)) {
+        //     alert('Please enter a valid email address.');
+        //     return;
+        // }
         // Navighează către Tab-uri și înlocuiește istoricul
         // astfel încât userul să nu poată da "Back" la login.
         (navigation as any).reset({
@@ -32,8 +32,6 @@ export default function LoginScreen() {
   return (
     <View className="flex-1">
       <StatusBar barStyle="light-content" />
-      
-      {/* Background Gradient */}
       <LinearGradient
         colors={['#5F7A4B', '#8C8673', '#AFA696']}
         locations={[0, 0.6, 1]}
@@ -46,7 +44,6 @@ export default function LoginScreen() {
           className="flex-1 justify-between"
         >
           
-          {/* Top Section: Logo & Branding */}
           <View className="items-center" style={{ marginTop: height * 0.08 }}>
             <Image
               source={require('../assets/images/logo.png')}
@@ -55,17 +52,14 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* Bottom Section: Form Card */}
-          {/* Folosim bg-white/25 pentru efectul de sticlă (glassmorphism) */}
           <View 
-            className="bg-white/25 rounded-t-[30px] px-8 pt-10 pb-10 justify-start"
+            className="bg-white/55 rounded-t-[30px] px-8 pt-10 pb-10 justify-start"
             style={{ height: height * 0.6 }}
           >
             <Text className="text-3xl font-bold text-white mb-8">
               Welcome Back!
             </Text>
 
-            {/* Inputs */}
             <View className="mb-5">
               <TextInput
                 className="bg-white rounded-xl h-12 px-4 mb-4 text-base text-gray-800"
@@ -86,7 +80,6 @@ export default function LoginScreen() {
               />
             </View>
 
-            {/* Action Buttons */}
             <View className="flex-row justify-between mb-4">
               <TouchableOpacity 
                 className="bg-white h-12 rounded-xl justify-center items-center"
@@ -110,12 +103,11 @@ export default function LoginScreen() {
                 width: '31%',
             }} 
             onPress={() => router.push('/forgotpass')}>
-              <Text className="text-gray-100 text-sm mb-10">Forgot Password?</Text>
+              <Text className="text-gray-500 text-sm mb-10">Forgot Password?</Text>
             </TouchableOpacity>
 
-            {/* Social Login */}
             <View className="items-center">
-              <Text className="text-gray-200 mb-5 text-sm">or continue with</Text>
+              <Text className="text-gray-500 mb-5 text-sm">or continue with</Text>
               
               <View className="flex-row gap-5">
                 <TouchableOpacity className="w-12 h-12 rounded-full bg-white justify-center items-center shadow-md">

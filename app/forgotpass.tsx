@@ -1,8 +1,8 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Dimensions, KeyboardAvoidingView, Platform, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, KeyboardAvoidingView, Platform, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { height } = Dimensions.get('window');
@@ -54,10 +54,10 @@ export default function ForgotPasswordScreen() {
       />
 
       <SafeAreaView className="flex-1">
-        <View className="px-5 mt-2">
+        <View className="px-5 mt-4">
             <TouchableOpacity 
                 onPress={() => router.back()}
-                className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
+                className="w-10 h-10 bg-white/25 rounded-full items-center justify-center"
             >
                 <Ionicons name="chevron-back" size={24} color="white" />
             </TouchableOpacity>
@@ -68,16 +68,13 @@ export default function ForgotPasswordScreen() {
           className="flex-1 justify-between"
         >
           
-          <View className="items-center" style={{ marginTop: height * 0.05 }}>
-            <View className="mb-4 items-center justify-center relative">
-               <MaterialCommunityIcons name="brain" size={50} color="white" />
-               <MaterialCommunityIcons name="sprout" size={40} color="white" style={{ position: 'absolute', bottom: -5 }} />
-            </View>
-            
-            <Text className="text-2xl font-bold text-white tracking-widest mb-1">
-              AI GARDENER
-            </Text>
-          </View>
+          <View className="items-center" style={{ marginTop: height * 0.08 }}>
+                      <Image
+                        source={require('../assets/images/logo.png')}
+                        className="w-41 h-40"
+                        resizeMode="contain"
+                      />
+                    </View>
 
           <View 
             className="bg-white/25 rounded-t-[30px] px-8 pt-10 pb-10 justify-start"

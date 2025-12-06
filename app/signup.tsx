@@ -1,9 +1,9 @@
-import { AntDesign, FontAwesome } from '@expo/vector-icons';
+import { AntDesign, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View
+  Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,7 +38,6 @@ export default function SignUpScreen() {
     <View className="flex-1">
       <StatusBar barStyle="light-content" />
       
-      {/* Background Gradient - Identic cu Login */}
       <LinearGradient
         colors={['#5F7A4B', '#8C8673', '#AFA696']}
         locations={[0, 0.6, 1]}
@@ -46,15 +45,21 @@ export default function SignUpScreen() {
       />
 
       <SafeAreaView className="flex-1">
+        <View className="px-5 mt-4">
+            <TouchableOpacity 
+                onPress={() => router.back()}
+                className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
+            >
+                <Ionicons name="chevron-back" size={24} color="white" />
+            </TouchableOpacity>
+        </View>
         <KeyboardAvoidingView 
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1"
         >
-          {/* Folosim ScrollView aici pentru că formularul e mai lung */}
           <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}>
             
-            {/* Top Section: Logo & Branding - Mai compact puțin */}
-            <View className="items-center" style={{ marginTop: height * 0.08 }}>
+            <View className="items-center my-8">
                 <Image
                     source={require('../assets/images/logo.png')}
                     className="w-41 h-40"
@@ -62,16 +67,14 @@ export default function SignUpScreen() {
                 />
             </View>
 
-            {/* Bottom Section: Form Card */}
             <View 
-              className="bg-white/25 rounded-t-[30px] px-8 pt-8 pb-10 justify-start"
+              className="bg-white/55 rounded-t-[30px] px-8 pt-8 pb-10 justify-start"
               style={{ minHeight: height * 0.65 }}
             >
               <Text className="text-3xl font-bold text-white mb-6">
                 Create Account
               </Text>
 
-              {/* Inputs */}
               <View className="mb-5">
                 <TextInput
                   className="bg-white rounded-xl h-12 px-4 mb-4 text-base text-gray-800"
@@ -99,9 +102,7 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Action Buttons */}
               <View className="flex-row justify-between mb-6">
-                {/* Butonul Login e acum secundar (transparent) */}
                 <TouchableOpacity 
                   className="bg-transparent borderkq border-white border h-12 rounded-xl justify-center items-center"
                   style={{ width: '48%' }}
@@ -110,7 +111,6 @@ export default function SignUpScreen() {
                   <Text className="text-white font-bold text-base">Log In</Text>
                 </TouchableOpacity>
 
-                {/* Butonul Sign Up e acum principal (alb) */}
                 <TouchableOpacity 
                   className="bg-white h-12 rounded-xl justify-center items-center"
                   style={{ width: '48%' }}
@@ -120,9 +120,8 @@ export default function SignUpScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Social Login */}
               <View className="items-center mt-2">
-                <Text className="text-gray-200 mb-4 text-sm">or sign up with</Text>
+                <Text className="text-gray-500 mb-4 text-sm">or sign up with</Text>
                 
                 <View className="flex-row gap-5">
                   <TouchableOpacity className="w-12 h-12 rounded-full bg-white justify-center items-center shadow-md">
