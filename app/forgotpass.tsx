@@ -14,7 +14,7 @@ export default function ForgotPasswordScreen() {
   const handleReset = () => {
     // Validare simplă: verificăm dacă câmpul nu e gol
     if (!email.trim()) {
-      Alert.alert("Atenție", "Te rugăm să introduci o adresă de email.");
+      Alert.alert("Error", "Please enter an email address.");
       return;
     }
 
@@ -69,12 +69,12 @@ export default function ForgotPasswordScreen() {
         >
           
           <View className="items-center" style={{ marginTop: height * 0.08 }}>
-                      <Image
-                        source={require('../assets/images/logo.png')}
-                        className="w-41 h-40"
-                        resizeMode="contain"
-                      />
-                    </View>
+            <Image
+              source={require('../assets/images/logo.png')}
+              className="w-41 h-40"
+              resizeMode="contain"
+            />
+          </View>
 
           <View 
             className="bg-white/25 rounded-t-[30px] px-8 pt-10 pb-10 justify-start"

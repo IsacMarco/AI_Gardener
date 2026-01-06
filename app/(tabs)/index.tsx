@@ -44,7 +44,7 @@ export default function HomeScreen() {
 
       <SafeAreaView className="flex-1">
         <ScrollView 
-            contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
+            contentContainerStyle={{ flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
         >
             <View className="items-center mt-4 mb-8">

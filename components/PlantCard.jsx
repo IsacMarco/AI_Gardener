@@ -1,34 +1,37 @@
-import React from 'react'
-import { Image, Text, TouchableOpacity, View } from 'react-native'
+import React from "react";
+import { Image, Text, TouchableOpacity, View } from "react-native";
+
 const PlantCard = ({ id, name, specie, image, schedule }) => {
-    return (
-        <TouchableOpacity 
-            key={id}
-            className="bg-[#F7F6F2] rounded-3xl p-4 mb-4 flex-row items-center overflow-hidden shadow-sm"
-            activeOpacity={0.7}
-            style={{ width: 140, marginRight: 12, height: 180, flexDirection: 'column', justifyContent: 'center' }}
-            >
-            <View className="items-center flex-1">
-                <View className="rounded-full overflow-hidden border border-gray-200 items-center"
-                    style={{ alignSelf: 'center', justifyContent: 'center' }}
-                >
-                    <Image
-                        source={image}
-                        resizeMode="contain"
-                        style={{ width: 70, height: 70, tintColor: '#4B5563'}}
-                    />
-                </View>
-                <Text className="text-black text-md font-bold mt-4">
-                    {name}
-                </Text>
-                <Text className="text-gray-400 text-md font-medium">
-                    {specie}
-                </Text>
-                <Text className="text-gray-400 text-sm mt-2">
-                    {schedule}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    )
-}
-export default PlantCard
+  return (
+    <TouchableOpacity
+      key={id}
+      activeOpacity={0.7}
+      className="bg-[#F7F6F2] rounded-3xl p-4 overflow-hidden shadow-sm"
+      style={{ width: 150, height: 185, marginRight: 12 }}
+    >
+      <View className="items-center justify-center flex-1">
+        <View className="w-20 h-20 rounded-full overflow-hidden border border-gray-200 items-center justify-center bg-white">
+          <Image
+            source={image}
+            resizeMode="contain"
+            style={{ width: 60, height: 60, tintColor: "#4B5563" }}
+          />
+        </View>
+
+        <Text className="text-[#1F2937] text-base font-bold mt-4" numberOfLines={1}>
+          {name}
+        </Text>
+
+        <Text className="text-gray-500 text-sm font-medium" numberOfLines={1}>
+          {specie}
+        </Text>
+
+        <Text className="text-gray-500 text-xs mt-2 text-center" numberOfLines={2}>
+          {schedule}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+export default PlantCard;

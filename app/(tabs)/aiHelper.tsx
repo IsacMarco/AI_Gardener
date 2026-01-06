@@ -5,6 +5,7 @@ import { Camera, Mic, Search } from 'lucide-react-native';
 import React from 'react';
 import {
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -124,18 +125,19 @@ export default function AiHelperScreen() {
                     className="bg-white flex-row items-center px-4 py-3.5 rounded-2xl shadow-sm mb-8"
                 >
                     <Search size={20} color="#9CA3AF" />
-                    <TextInput className="flex-1 ml-3 text-base text-[#9CA3AF]"
-                    placeholder="Ask me anything..."
-                  placeholderTextColor="#A0A0A0"
+                    <TextInput className="flex-1 ml-3 text-base text-[#374151]"
+                      placeholder="Ask me anything..."
+                      placeholderTextColor="#A0A0A0"
+                      onSubmitEditing={() => Keyboard.dismiss()}
                     >
                     </TextInput>
                     <View className="flex-row gap-4">
-                        <View>
+                        <TouchableOpacity>
                             <Camera size={22} color="#5F7A4B" />
-                        </View>
-                        <View>
+                        </TouchableOpacity>
+                        <TouchableOpacity>
                             <Mic size={22} color="#5F7A4B" />
-                        </View>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
