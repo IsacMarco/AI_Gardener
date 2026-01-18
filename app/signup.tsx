@@ -1,12 +1,17 @@
 import { AntDesign, FontAwesome, Ionicons } from '@expo/vector-icons';
+import auth, { createUserWithEmailAndPassword, signOut } from '@react-native-firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { FirebaseError } from 'firebase/app';
+import { X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View
+  ActivityIndicator,
+  Dimensions, Image, KeyboardAvoidingView,
+  Modal,
+  Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 const { height } = Dimensions.get('window');
 
 export default function SignUpScreen() {
@@ -14,15 +19,22 @@ export default function SignUpScreen() {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const navigation = useNavigation();
-    const handleSignUp = () => {
-        // Aici logică de creare cont (API)
-        
-        // După succes, mergi la Home
-        (navigation as any).reset({
-        index: 0,
-        routes: [{ name: '(tabs)' }],
-        });
+    const [modalVisible, setModalVisible] = useState(false);
+    const [signUpStatus, setSignUpStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const handleCloseModal = () => {
+      setModalVisible(false);
+    };
+    const handleSignUp = async () => {
+        setSignUpStatus('loading');
+        setModalVisible(true);
+        try {
+          await createUserWithEmailAndPassword(auth(), email.trim(), password);
+          await signOut(auth());
+          setSignUpStatus('success');
+        } catch (e: any) {
+          const err = e as FirebaseError;
+          setSignUpStatus('error');
+        }
     };
 
     const handleGoToLogin = () => {
@@ -33,8 +45,8 @@ export default function SignUpScreen() {
         router.replace('/');
         }
     };
-
   return (
+    <>
     <View className="flex-1">
       <StatusBar barStyle="light-content" />
       
@@ -139,5 +151,71 @@ export default function SignUpScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
+    <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={handleCloseModal}
+      >
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'}}
+          activeOpacity={1}
+          onPress={handleCloseModal}
+        >
+          {/* Oprim propagarea touch-ului pentru a nu închide modalul când apăsăm pe el */}
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={{ width: '85%', borderRadius: 32, backgroundColor: 'white', padding: 24 }}
+            className="bg-white rounded-[32px] p-6 shadow-2xl items-center"
+          >
+            <TouchableOpacity 
+              onPress={handleCloseModal} 
+              style={{ position: 'absolute', width: '100%', alignItems: 'flex-end', paddingTop: 8}}
+            >
+              <X size={25} color="#9CA3AF" />
+            </TouchableOpacity>
+            {signUpStatus === 'success' && (<>
+            <View className="mb-6 mt-4 items-center">
+              <Text className="text-xl font-bold text-[#1F2937] mb-2">
+                Account Created Successfully
+              </Text>
+            </View>
+            <TouchableOpacity
+              className="w-full bg-green-100 py-4 rounded-full items-center mb-4 shadow-sm border border-white/50"
+              onPress={handleGoToLogin}
+            >
+              <Text className="text-[#1F2937] font-bold text-base">
+                Go to Log In
+              </Text>
+            </TouchableOpacity>
+            </>)}
+            {signUpStatus === 'error' && (<>
+            <View className="mb-6 mt-4 items-center">
+              <Text className="text-xl font-bold text-[#1F2937] mb-2">
+                Sign Up Failed
+              </Text>
+              <Text className="text-center text-gray-600">
+                An error occurred during sign up. Please try again.
+              </Text>
+            </View>
+            <TouchableOpacity
+              className="w-full bg-red-100 py-4 rounded-full items-center mb-4 shadow-sm border border-white/50"
+              onPress={handleCloseModal}
+            >
+              <Text className="text-[#1F2937] font-bold text-base">
+                Close
+              </Text>
+            </TouchableOpacity>
+            </>)}
+            {signUpStatus === 'loading' && (
+              <View>
+                <ActivityIndicator size="large" color="#4CAF50" />
+                <Text>Se creează contul...</Text>
+              </View>
+            )}
+          </TouchableOpacity>  
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }

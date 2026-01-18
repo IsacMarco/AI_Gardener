@@ -1,0 +1,15 @@
+This file contains all the npm install comands so you can use this app(the packages that are addes after the project creation)
+
+to run the app you must run npx expo start
+
+npm install
+npx expo install expo-image-picker
+npm install lucide-react-native
+npx expo install expo-linear-gradient
+npm install --dev tailwindcss@^3.4.17 prettier-plugin-tailwindcss@^0.5.11
+npm install nativewind react-native-reanimated@~3.17.4 react-native-safe-area-context@5.4.0
+npx expo install @react-native-firebase/app @react-native-firebase/auth
+npx expo install expo-build-properties
+npm install @react-native-google-signin/google-signin
+npm install @react-native-firebase/firestore @react-native-firebase/storage
+npm install @google/generative-ai

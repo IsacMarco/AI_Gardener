@@ -39,6 +39,13 @@ yarn-error.*
 
 app-example
 
+
+.env
+
+# sensitive files
+google-services.json
+GoogleService-Info.plist
+
 # generated native folders
 /ios
 /android

@@ -91,19 +91,28 @@
 
 // export default _layout
 import { Stack } from "expo-router";
+import React from "react";
+import { PlantProvider } from "../../context/PlantContext"; // <--- 1. Importăm contextul creat
 
-export default function RootLayout() {
-  return <Stack
-    screenOptions={{ 
-        headerShown: false,
-        gestureEnabled: false,
-        animation: "fade",
-      }}
-  >
-    <Stack.Screen name="index"/>
-    <Stack.Screen name="account"/>
-    <Stack.Screen name="myPlants" />
-    <Stack.Screen name="aiHelper" />
-    <Stack.Screen name="addPlant" />
-  </Stack>;
+export default function TabsLayout() {
+  return (
+    // 2. Îmbrăcăm toată navigația în Provider
+    <PlantProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: "fade",
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="account" />
+        <Stack.Screen name="myPlants" />
+        <Stack.Screen name="aiHelper" />
+        <Stack.Screen name="addPlant" />
+        <Stack.Screen name="plantDetails" />
+        <Stack.Screen name="editPlant" />
+      </Stack>
+    </PlantProvider>
+  );
 }

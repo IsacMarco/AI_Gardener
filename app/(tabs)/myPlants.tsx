@@ -1,44 +1,62 @@
 import PlantCardExtended from '@/components/PlantCardExtended';
 import { Ionicons } from '@expo/vector-icons';
+import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth"; // <--- Asigură-te că calea e corectă
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter } from 'expo-router'; // <--- Import useFocusEffect
 import { Brain, Plus } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react'; // <--- Import useState, useCallback
+import { ActivityIndicator, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePlants } from '../../context/PlantContext';
 
-const myGardenData = [
-  {
-    id: '1',
-    name: 'Monstera Deliciosa',
-    schedule: 'Next Watering: Today, 7 PM',
-    image: require('../../assets/icons/plants_icon.png'),
-    specie: 'Monstera'
-  },
-  {
-    id: '2',
-    name: 'Snake',
-    schedule: 'Next Watering: Tomorrow, 9 AM',
-    image: require('../../assets/icons/plants_icon.png'),
-    specie: 'Sansevieria'
-  },
-  {
-    id: '3',
-    name: 'Snake',
-    schedule: 'Next Watering: Oct 26, 1 PM',
-    image: require('../../assets/icons/plants_icon.png'),
-    specie: 'Sansevieria'
-  },
-  {
-    id: '4',
-    name: 'Fiddle Leaf Fig',
-    schedule: 'Next Watering: Oct 26, 5 PM',
-    image: require('../../assets/icons/plants_icon.png'),
-    specie: 'Ficus Lyrata'
-  },
-];
+// Definim tipul datelor care vin de la server (MongoDB)
+type PlantFromDB = {
+  _id: string;
+  name: string;
+  species?: string;
+  location?: string;
+  imageBase64?: string;
+  watering?: {
+    enabled: boolean;
+    frequency: number;
+    time: string;
+  };
+};
+
 export default function MyPlants() {
   const router = useRouter();
+  const { plants, loading } = usePlants();
+  const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
+
+  const handleNoUser = () => {
+    if(!user) {
+      return (
+        <View className="flex-1 justify-center items-center bg-white">
+          <LinearGradient
+          colors={['#5F7A4B', '#8C8673', '#AFA696']}
+          locations={[0, 0.6, 1]}
+          style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+        />
+          <Text className="text-gray-600 text-lg">Please log in to add a plant.</Text>
+          <TouchableOpacity 
+            onPress={() => router.replace("/")}
+            className="mt-4 bg-green-600 px-6 py-3 rounded-full"
+          >
+            <Text className="text-white font-semibold text-lg">Go to Login</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+  };
+
+  useEffect(() => {
+    const currentUser = auth().currentUser;
+    setUser(currentUser);
+    if (!currentUser) {
+      handleNoUser();
+    }
+  }, []);
+  
   return (
     <View className="flex-1">
           <StatusBar barStyle="light-content" />
@@ -48,6 +66,8 @@ export default function MyPlants() {
             style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
           />    
       <SafeAreaView className="flex-1">
+        
+        {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-2 mb-2">
           <TouchableOpacity 
                 onPress={() => router.back()}
@@ -56,27 +76,60 @@ export default function MyPlants() {
               <Ionicons name="chevron-back" size={24} color="white" />
           </TouchableOpacity>
         </View>
+
         <View className="items-center mb-8">
           <Text className="text-3xl font-bold text-white tracking-wider">
             My Garden
           </Text>
         </View>
+
+        {/* Containerul Principal Alb */}
         <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8 pb-4">          
-          <ScrollView 
-            showsVerticalScrollIndicator={false} 
-            contentContainerStyle={{ paddingBottom: 100}}
-          >
-            {myGardenData.map((plant) => (
-              <PlantCardExtended
-                key={plant.id}
-                id={plant.id}
-                name={plant.name}
-                schedule={plant.schedule}
-                image={plant.image}
-                specie={plant.specie}
-              />
-            ))}
-          </ScrollView>
+          
+          {loading ? (
+             <View className="flex-1 justify-center items-center">
+                <ActivityIndicator size="large" color="#5F7A4B" />
+             </View>
+          ) : (
+            <ScrollView 
+              showsVerticalScrollIndicator={false} 
+              contentContainerStyle={{ paddingBottom: 100}}
+            >
+              {plants.length === 0 ? (
+                <View className="items-center mt-10">
+                    <Text className="text-gray-500 text-lg">No plants yet.</Text>
+                    <Text className="text-gray-400">Tap + to start your garden!</Text>
+                </View>
+              ) : (
+                plants.map((plant) => {
+                  // Logică pentru a crea textul "Every X days"
+                  let scheduleText = "No schedule";
+                  if (plant.watering?.enabled && plant.watering?.frequency) {
+                      scheduleText = `Every ${plant.watering.frequency} days at ${plant.watering.time}`;
+                  }
+
+                  // Logică pentru imagine: Base64 sau placeholder
+                  // PlantCardExtended așteaptă probabil un obiect {uri: ...} sau require(...)
+                  const imageSource = plant.imageBase64 
+                    ? { uri: plant.imageBase64 } 
+                    : require('../../assets/icons/plants_icon.png'); // Placeholder-ul tău
+
+                  return (
+                    <PlantCardExtended
+                      key={plant._id} // MongoDB folosește _id
+                      id={plant._id}
+                      name={plant.name}
+                      schedule={scheduleText} // Text generat din datele reale
+                      image={imageSource}
+                      specie={plant.species || "Unknown species"}
+                    />
+                  );
+                })
+              )}
+            </ScrollView>
+          )}
+
+          {/* Butoanele de jos (AI & Add) */}
           <View className="absolute bottom-5 left-5 right-5 flex-row items-center justify-between">
             <TouchableOpacity 
               activeOpacity={0.8}
@@ -90,6 +143,7 @@ export default function MyPlants() {
                 Talk to AI Gardener
               </Text>
             </TouchableOpacity>
+            
             <TouchableOpacity 
               activeOpacity={0.8}
               className="w-14 h-14 bg-[#769055] rounded-full items-center justify-center shadow-lg"
@@ -98,6 +152,7 @@ export default function MyPlants() {
               <Plus size={32} color="white" />
             </TouchableOpacity>
           </View>
+
         </View>
       </SafeAreaView>
     </View>

@@ -1,35 +1,102 @@
 import { AntDesign, FontAwesome } from '@expo/vector-icons';
+// 1. IMPORTURI FIREBASE ACTUALIZATE
+import auth, { getAuth, GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword } from '@react-native-firebase/auth';
+// 2. IMPORT GOOGLE SIGN IN
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Dimensions, Image, KeyboardAvoidingView, Platform, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 const { height } = Dimensions.get('window');
+
+// 3. CONFIGURARE INITIALA GOOGLE (Ruleaza o singura data)
+GoogleSignin.configure({
+  // IMPORTANT: inlocuieste string-ul de mai jos cu "Web Client ID" din Firebase Console -> Authentication -> Google -> Edit
+  webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID, 
+});
 
 export default function LoginScreen() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const navigation = useNavigation();
-    const handleLogin = () => {
-        //logica de validare
-        // if (email.trim() === '' || password.trim() === '') {
-        //     alert('Please enter both email and password.');
-        //     return;
-        // }
-        // if (!/\S+@\S+\.\S+/.test(email)) {
-        //     alert('Please enter a valid email address.');
-        //     return;
-        // }
-        // Navighează către Tab-uri și înlocuiește istoricul
-        // astfel încât userul să nu poată da "Back" la login.
-        (navigation as any).reset({
-            index: 0,
-            routes: [{ name: '(tabs)' }],
-            });
+    const [modalVisible, setModalVisible] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [logInStatus, setLogInStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+    const handleCloseModal = () => {
+      setModalVisible(false);
+      setLogInStatus('idle');
     };
 
+    // --- LOGIN CU EMAIL ---
+    const handleLogin = async () => {
+        setLogInStatus('loading');
+        try {
+            await signInWithEmailAndPassword(auth(), email.trim(), password);
+            setModalVisible(true);
+            // Rutarea se face automat din _layout.tsx, dar modalul arata succesul
+        } catch (error: any) {
+            console.error(error);
+            setLogInStatus('error');
+            if (error.code === 'auth/invalid-credential') {
+                setErrorMessage('Invalid email or password.');
+            } else {
+                setErrorMessage('Something went wrong. Please try again.');
+            }
+            setModalVisible(true);
+        }
+    };
+    // --- LOGIN CU GOOGLE ---
+  const onGoogleButtonPress = async () => {
+    setLogInStatus('loading');
+    try {
+      // 1. Verifica daca exista Google Play Services pe telefon
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      // 2. Deschide fereastra de login Google si asteapta raspunsul
+      const response = await GoogleSignin.signIn();
+      // FIX: Convertim response la 'any' ca sa nu mai fie probleme cu TypeScript
+      // ca nu gaseste proprietatea 'idToken' pe vechiul format.
+      const result: any = response; 
+      // Acum putem verifica ambele locuri fara eroare
+      const idToken = result.data?.idToken || result.idToken;
+      if (!idToken) {
+        throw new Error('No Google ID Token found!');
+      }
+      // 4. Cream credentialul pentru Firebase
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      // 5. Logam userul in Firebase folosind instanta modulara (getAuth)
+      const authInstance = getAuth();
+      await signInWithCredential(authInstance, googleCredential);
+      // 6. Daca ajunge aici, login-ul a reusit
+      setModalVisible(true);
+
+    } catch (error: any) {
+      console.error("Google Sign In Error:", error);
+
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // Userul a inchis fereastra de Google, oprim doar loading-ul
+        setLogInStatus('idle');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        // Operatiunea e deja in curs, nu facem nimic
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setLogInStatus('error');
+        setErrorMessage('Google Play Services nu sunt disponibile sau sunt prea vechi.');
+        setModalVisible(true);
+      } else {
+        // Orice alta eroare
+        setLogInStatus('error');
+        setErrorMessage(error.message || 'A aparut o eroare la conectarea cu Google.');
+        setModalVisible(true);
+      }
+    }
+};
+
   return (
+    <>
     <View className="flex-1">
       <StatusBar barStyle="light-content" />
       <LinearGradient
@@ -85,8 +152,13 @@ export default function LoginScreen() {
                 className="bg-white h-12 rounded-xl justify-center items-center"
                 style={{ width: '48%' }}
                 onPress={handleLogin}
+                disabled={logInStatus === 'loading'}
               >
-                <Text className="text-gray-600 font-bold text-base">Log In</Text>
+                {logInStatus === 'loading' ? (
+                    <ActivityIndicator color="#5F7A4B" />
+                ) : (
+                    <Text className="text-gray-600 font-bold text-base">Log In</Text>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -100,7 +172,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity style={{ 
                 alignSelf: 'flex-start', 
-                width: '31%',
+                width: '35%',
             }} 
             onPress={() => router.push('/forgotpass')}>
               <Text className="text-gray-500 text-sm mb-10">Forgot Password?</Text>
@@ -110,7 +182,11 @@ export default function LoginScreen() {
               <Text className="text-gray-500 mb-5 text-sm">or continue with</Text>
               
               <View className="flex-row gap-5">
-                <TouchableOpacity className="w-12 h-12 rounded-full bg-white justify-center items-center shadow-md">
+                {/* 5. BUTONUL GOOGLE CONECTAT LA FUNCTIE */}
+                <TouchableOpacity 
+                    onPress={onGoogleButtonPress}
+                    className="w-12 h-12 rounded-full bg-white justify-center items-center shadow-md"
+                >
                   <AntDesign name="google" size={24} color="#EA4335" />
                 </TouchableOpacity>
                 
@@ -124,5 +200,50 @@ export default function LoginScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
+
+    {/* MODAL STATUS */}
+    <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={handleCloseModal}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center px-6">
+          <View className="w-full bg-white rounded-[32px] p-8 shadow-2xl items-center relative">
+            
+            <TouchableOpacity 
+              onPress={handleCloseModal} 
+              className="absolute right-6 top-6"
+            >
+              <X size={25} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {logInStatus === 'error' && (
+              <>
+                <View className="mb-6 mt-4 items-center">
+                  <View className="w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4">
+                    <X size={32} color="#EF4444" />
+                  </View>
+                  <Text className="text-xl font-bold text-[#1F2937]">
+                    Log In Failed
+                  </Text>
+                  <Text className="text-center text-gray-600 mt-2">
+                    {errorMessage}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  className="w-full bg-gray-100 py-4 rounded-full items-center shadow-sm"
+                  onPress={handleCloseModal}
+                >
+                  <Text className="text-[#1F2937] font-bold text-base">
+                    Try Again
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
