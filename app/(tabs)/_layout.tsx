@@ -9,7 +9,7 @@
 
 // const TabIcon = ({ focused, icon}: TabIconProps) => {
 //     return (
-//         // centrat pe orizontală și vertical în zona butonului
+//         // centrat pe orizontala si vertical in zona butonului
 //         <View className="flex-row items-center justify-center">
 //             <Image
 //                 source={icon}
@@ -27,7 +27,7 @@
 //                 headerShown: false,
 //                 tabBarShowLabel: false,
 //                 tabBarItemStyle: {
-//                     // fiecare buton ocupă spațiul rămas și-și centerizează conținutul
+//                     // fiecare buton ocupa spatiul ramas si-si centerizeaza continutul
 //                     flex: 1,
 //                     alignItems: 'center',
 //                     justifyContent: 'center',
@@ -92,11 +92,11 @@
 // export default _layout
 import { Stack } from "expo-router";
 import React from "react";
-import { PlantProvider } from "../../context/PlantContext"; // <--- 1. Importăm contextul creat
+import { PlantProvider } from "../../context/PlantContext"; // <--- 1. Importam contextul creat
 
 export default function TabsLayout() {
   return (
-    // 2. Îmbrăcăm toată navigația în Provider
+    // 2. imbracam toata navigatia in Provider
     <PlantProvider>
       <Stack
         screenOptions={{

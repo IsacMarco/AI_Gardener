@@ -28,7 +28,7 @@ type PlantContextType = {
   plants: Plant[];
   loading: boolean;
   refreshPlants: () => Promise<void>;
-  deletePlant: (id: string) => Promise<boolean>; // <--- Funcția nouă
+  deletePlant: (id: string) => Promise<boolean>; // <--- Functia noua
 };
 
 const PlantContext = createContext<PlantContextType | undefined>(undefined);
@@ -37,7 +37,7 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
   const [plants, setPlants] = useState<Plant[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Funcția de încărcare plante
+  // Functia de incarcare plante
   const fetchPlants = async () => {
     try {
       const user = auth().currentUser;
@@ -59,17 +59,17 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
         console.error("Eroare server context:", data);
       }
     } catch (error) {
-      console.error("Eroare rețea context:", error);
+      console.error("Eroare retea context:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- LOGICA NOUĂ PENTRU ȘTERGERE ---
+  // --- LOGICA NOUa PENTRU sTERGERE ---
   const deletePlant = async (id: string): Promise<boolean> => {
     try {
-      // 1. URL-ul pentru ștergere.
-      // NOTĂ: Asigură-te că în backend ai ruta DELETE '/plants/:id' sau '/delete-plant/:id'
+      // 1. URL-ul pentru stergere.
+      // NOTa: Asigura-te ca in backend ai ruta DELETE '/plants/:id' sau '/delete-plant/:id'
       //const DELETE_URL = `http://10.0.2.2:3000/plants/${id}`;
 
       const response = await fetch(
@@ -79,19 +79,19 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
         },
       );
       if (response.ok) {
-        // 2. Actualizare Optimistă:
-        // Ștergem planta din starea locală imediat, fără să reîncărcăm tot de la server.
+        // 2. Actualizare Optimista:
+        // stergem planta din starea locala imediat, fara sa reincarcam tot de la server.
         setPlants((currentPlants) =>
           currentPlants.filter((plant) => plant._id !== id),
         );
         return true;
       } else {
-        console.error("Nu s-a putut șterge planta.");
+        console.error("Nu s-a putut sterge planta.");
         return false;
       }
     } catch (error) {
-      console.error("Eroare la ștergere:", error);
-      return false; // Returnăm false ca să știm în UI să afișăm eroare
+      console.error("Eroare la stergere:", error);
+      return false; // Returnam false ca sa stim in UI sa afisam eroare
     }
   };
   // -----------------------------------

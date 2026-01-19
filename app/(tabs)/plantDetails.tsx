@@ -44,7 +44,7 @@ export default function PlantDetailsScreen() {
   const imageSource = plant.imageBase64
     ? { uri: plant.imageBase64 }
     : require("../../assets/icons/plants_icon.png");
-  // Verificăm dacă alertele sunt active
+  // Verificam daca alertele sunt active
   const isWateringEnabled = plant.watering?.enabled;
   const handleWaterPlant = () => {
     setWateredToday(true);
@@ -128,12 +128,12 @@ export default function PlantDetailsScreen() {
 
           {/* --- GRID DETALII --- */}
           <View className="flex-row flex-wrap justify-between mb-8">
-            {/* 1. Card Locație */}
+            {/* 1. Card Locatie */}
             <View className="w-[48%] bg-white p-3 rounded-2xl shadow-sm mb-4 flex-row items-center">
               <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center mr-3 flex-shrink-0">
                 <MapPin size={20} color="#F59E0B" />
               </View>
-              {/* Adăugat flex-1 pentru a gestiona lățimea textului */}
+              {/* Adaugat flex-1 pentru a gestiona latimea textului */}
               <View className="flex-1">
                 <Text className="text-xs text-gray-400 font-bold uppercase">
                   Location
@@ -149,7 +149,7 @@ export default function PlantDetailsScreen() {
               </View>
             </View>
 
-            {/* 2. Card Frecvență */}
+            {/* 2. Card Frecventa */}
             {isWateringEnabled && (
               <View className="w-[48%] bg-white p-3 rounded-2xl shadow-sm mb-4 flex-row items-center">
                 <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3 flex-shrink-0">
@@ -212,10 +212,10 @@ export default function PlantDetailsScreen() {
           </View>
 
           {/* --- WATERING ACTION SECTION --- */}
-          {/* Afișăm secțiunea de udare doar dacă alertele sunt ON, 
-              sau o lăsăm vizibilă dar fără numărătoare? 
-              De obicei vrei să poți uda planta și manual.
-              O las activă, dar poți ascunde tot blocul cu {isWateringEnabled && (...)} dacă vrei. 
+          {/* Afisam sectiunea de udare doar daca alertele sunt ON, 
+              sau o lasam vizibila dar fara numaratoare? 
+              De obicei vrei sa poti uda planta si manual.
+              O las activa, dar poti ascunde tot blocul cu {isWateringEnabled && (...)} daca vrei. 
           */}
           {/* <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
             <Text className="text-xl font-bold text-[#1F2937] mb-4">

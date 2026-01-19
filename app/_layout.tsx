@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
-// 1. Modificăm importul pentru a folosi varianta modulară
-import auth, { FirebaseAuthTypes, onAuthStateChanged } from '@react-native-firebase/auth';
+// 1. Modificam importul pentru a folosi varianta modulara
+import auth, {
+  FirebaseAuthTypes,
+  onAuthStateChanged,
+} from "@react-native-firebase/auth";
 import { Stack, useRouter, useSegments } from "expo-router";
-import './globals.css';
+import "./globals.css";
 
 export default function RootLayout() {
   const [initializing, setInitializing] = useState(true);
@@ -18,33 +21,33 @@ export default function RootLayout() {
     const subscriber = onAuthStateChanged(auth(), handleAuthStateChanged);
     return subscriber;
   }, []);
-  
+
   useEffect(() => {
     if (initializing) return;
     const inAuthGroup = segments[0] === "(tabs)";
     if (usr && !inAuthGroup) {
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     } else if (!usr && inAuthGroup) {
       router.replace("/");
     }
   }, [usr, initializing]);
 
-  if (initializing) return null; 
+  if (initializing) return null;
 
   return (
     <Stack
-      screenOptions={{ 
+      screenOptions={{
         headerShown: false,
         gestureEnabled: false,
         animation: "fade",
       }}
     >
       <Stack.Protected guard={!!usr}>
-        <Stack.Screen name="(tabs)"/>
+        <Stack.Screen name="(tabs)" />
       </Stack.Protected>
       <Stack.Protected guard={!usr}>
-        <Stack.Screen name="index"/>
-        <Stack.Screen name="signup"/>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="signup" />
         <Stack.Screen name="forgotpass" />
       </Stack.Protected>
     </Stack>

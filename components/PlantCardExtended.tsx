@@ -101,7 +101,7 @@ export default function PlantListItem({
           activeOpacity={1}
           onPress={handleCloseModal}
         >
-          {/* Oprim propagarea touch-ului pentru a nu închide modalul când apăsăm pe el */}
+          {/* Oprim propagarea touch-ului pentru a nu inchide modalul cand apasam pe el */}
           <TouchableOpacity
             activeOpacity={1}
             style={{

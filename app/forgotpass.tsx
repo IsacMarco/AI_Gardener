@@ -23,11 +23,11 @@ const { height } = Dimensions.get("window");
 export default function ForgotPasswordScreen() {
   const router = useRouter();
 
-  // Stări pentru logică
+  // Stari pentru logica
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Stări pentru Modalul Personalizat
+  // Stari pentru Modalul Personalizat
   const [modalVisible, setModalVisible] = useState(false);
   const [modalContent, setModalContent] = useState<{
     title: string;
@@ -39,7 +39,7 @@ export default function ForgotPasswordScreen() {
     type: "success", // 'success' sau 'error'
   });
 
-  // Funcție ajutătoare pentru a deschide modalul
+  // Functie ajutatoare pentru a deschide modalul
   const showModal = (
     title: string,
     message: string,
@@ -49,18 +49,18 @@ export default function ForgotPasswordScreen() {
     setModalVisible(true);
   };
 
-  // Funcție pentru închiderea modalului
+  // Functie pentru inchiderea modalului
   const handleCloseModal = () => {
     setModalVisible(false);
-    // Dacă operațiunea a fost un succes, ne întoarcem la Login
+    // Daca operatiunea a fost un succes, ne intoarcem la Login
     if (modalContent.type === "success") {
       router.back();
     }
   };
 
-  // Logica principală de Resetare
+  // Logica principala de Resetare
   const handleReset = async () => {
-    // 1. Validare simplă
+    // 1. Validare simpla
     if (!email.trim()) {
       showModal(
         "Missing Email",
@@ -71,7 +71,7 @@ export default function ForgotPasswordScreen() {
     }
     setLoading(true);
     try {
-      // 2. Apelul către Firebase
+      // 2. Apelul catre Firebase
       await auth().sendPasswordResetEmail(email.trim());
       // 3. Succes
       showModal(
@@ -111,7 +111,7 @@ export default function ForgotPasswordScreen() {
       >
         <View className="flex-1 bg-black/60 justify-center items-center px-6">
           <View className="bg-white w-full max-w-sm rounded-[24px] p-6 items-center shadow-2xl">
-            {/* Iconița din Modal (Verde sau Roșie) */}
+            {/* Iconita din Modal (Verde sau Rosie) */}
             <View
               className={`w-16 h-16 rounded-full items-center justify-center mb-4 ${modalContent.type === "success" ? "bg-green-100" : "bg-red-100"}`}
             >
@@ -151,7 +151,7 @@ export default function ForgotPasswordScreen() {
       {/* --------------------------- */}
 
       <SafeAreaView className="flex-1">
-        {/* Buton Înapoi */}
+        {/* Buton inapoi */}
         <View className="px-5 mt-4">
           <TouchableOpacity
             onPress={() => router.back()}
@@ -168,7 +168,7 @@ export default function ForgotPasswordScreen() {
           {/* Logo */}
           <View className="items-center" style={{ marginTop: height * 0.05 }}>
             <Image
-              source={require("../assets/images/logo.png")} // Asigură-te că calea e corectă
+              source={require("../assets/images/logo.png")} // Asigura-te ca calea e corecta
               className="w-48 h-48"
               resizeMode="contain"
             />

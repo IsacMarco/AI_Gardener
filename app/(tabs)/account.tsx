@@ -30,7 +30,7 @@ const { height } = Dimensions.get("window");
 
 // --- COMPONENTE MICI PENTRU UI ---
 
-// 1. Card de Statistică (Gamification)
+// 1. Card de Statistica (Gamification)
 const StatCard = ({
   icon,
   value,
@@ -47,7 +47,7 @@ const StatCard = ({
   </View>
 );
 
-// 2. Element de listă pentru Setări
+// 2. Element de lista pentru Setari
 const SettingItem = ({
   icon,
   label,
@@ -111,7 +111,7 @@ const AccountScreen = () => {
     }
   };
 
-  // Render dacă nu e logat
+  // Render daca nu e logat
   if (!user) {
     return (
       <View className="flex-1 justify-center items-center bg-white">

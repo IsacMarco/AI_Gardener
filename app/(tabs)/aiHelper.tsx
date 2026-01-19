@@ -1,13 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   AlertCircle,
   Camera,
+  ChevronDown,
+  Globe,
   Image as ImageIcon,
   Mic,
   Send,
+  StopCircle,
   X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -28,16 +32,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// --- IMPORT NOU PENTRU GEMINI ---
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// --- IMPORT SPEECH RECOGNITION ---
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 
-// Inițializăm clientul Gemini
-// Asigură-te că ai cheia în .env: EXPO_PUBLIC_GEMINI_API_KEY
 const genAI = new GoogleGenerativeAI(
   process.env.EXPO_PUBLIC_GEMINI_API_KEY || "",
 );
 
-// Prompt-ul de sistem (Personalitatea)
+// Prompt-ul de sistem
 const SYSTEM_PROMPT = `
 ### ROLE & IDENTITY
 You are "AI Gardener", an expert botanist and horticulturist assistant. Your knowledge base covers plant identification, pathology (diseases/pests), and care requirements for indoor and outdoor plants.
@@ -48,6 +53,7 @@ You are "AI Gardener", an expert botanist and horticulturist assistant. Your kno
 3. **Educate**: Provide concise care tips (light, water, soil, humidity).
 
 ### CONVERSATION RULES
+- **Language Matching**: ALWAYS respond in the SAME LANGUAGE as the user's message. If the user writes in Romanian, reply in Romanian. If in Spanish, reply in Spanish. Match their language exactly.
 - **Conciseness is Key**: Mobile users scan text. Use short paragraphs and bullet points. Avoid fluff.
 - **Context Awareness**: Remember details from the current conversation (e.g., if the user previously mentioned they live in a cold climate).
 - **Tone**: Friendly, encouraging, but scientifically accurate.
@@ -74,14 +80,24 @@ type Message = {
   sender: "user" | "ai";
 };
 
+const LANGUAGE_OPTIONS = [
+  { code: "en-US", label: "English", short: "EN" },
+  { code: "ro-RO", label: "Română", short: "RO" },
+  { code: "es-ES", label: "Español", short: "ES" },
+  { code: "fr-FR", label: "Français", short: "FR" },
+  { code: "de-DE", label: "Deutsch", short: "DE" },
+  { code: "it-IT", label: "Italiano", short: "IT" },
+  { code: "pt-BR", label: "Português", short: "PT" },
+];
+
 export default function AiHelperScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
 
   // --- STATE CHAT ---
   const [inputText, setInputText] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null); // Preview URI
-  const [selectedBase64, setSelectedBase64] = useState<string | null>(null); // Base64 pt AI
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedBase64, setSelectedBase64] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -94,7 +110,7 @@ export default function AiHelperScreen() {
   // --- STATE MODAL ---
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
-    type: "error" | "info" | "selection";
+    type: "error" | "info" | "selection" | "voice-error";
     title: string;
     message: string;
     onConfirm?: () => void;
@@ -104,31 +120,102 @@ export default function AiHelperScreen() {
     message: "",
   });
 
-  useEffect(() => {
-    const listModels = async () => {
-      try {
-        // ATENȚIE: Asta necesită un import diferit, dar pentru test rapid
-        // putem încerca un fetch direct dacă SDK-ul face figuri.
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.EXPO_PUBLIC_GEMINI_API_KEY}`,
-        );
-        const data = await response.json();
-        console.log("=== AVAILABLE GEMINI MODELS ===");
-        // Afișăm doar numele modelelor
-        if (data.models) {
-          data.models.forEach((m: any) => console.log(m.name));
-        } else {
-          console.log("No models found or error:", data);
-        }
-        console.log("===============================");
-      } catch (e) {
-        console.error("Error listing models:", e);
+  // --- LOGICA SPEECH TO TEXT ---
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGE_OPTIONS[0]);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+  // 1. Cand incepe sa vorbeasca efectiv
+  useSpeechRecognitionEvent("start", () => {
+    setIsRecognizing(true);
+  });
+
+  // 2. Cand primeste rezultate (in timp real)
+  useSpeechRecognitionEvent("result", (event) => {
+    if (event.results && event.results.length > 0) {
+      const lastResult = event.results[event.results.length - 1];
+      if (lastResult?.transcript) {
+        setInputText(lastResult.transcript);
       }
-    };
+    }
+  });
 
-    listModels();
-  }, []);
+  // 3. Cand apare o eroare
+  useSpeechRecognitionEvent("error", (error) => {
+    console.log("Speech error:", error);
+    showModal(
+      "voice-error",
+      "No speech detected",
+      "Please try again or use the keyboard to type your message.",
+    );
+    setIsRecognizing(false);
+  });
 
+  // 4. Cand se opreste (de la sine sau manual)
+  useSpeechRecognitionEvent("end", () => {
+    setIsRecognizing(false);
+  });
+
+  // Functia de control Microfon
+  const handleMicrophonePress = async () => {
+    // A. Daca deja inregistreaza, oprim fortat
+    if (isRecognizing) {
+      ExpoSpeechRecognitionModule.stop();
+      setIsRecognizing(false);
+      return;
+    }
+
+    // B. Altfel, pornim
+    try {
+      const permission =
+        await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!permission.granted) {
+        showModal(
+          "error",
+          "Permission Denied",
+          "Need microphone and speech permissions to use voice.",
+          () => Linking.openSettings(),
+        );
+        return;
+      }
+
+      // Pornim recunoasterea
+      ExpoSpeechRecognitionModule.start({
+        lang: selectedLanguage.code,
+        interimResults: true,
+        maxAlternatives: 1,
+        continuous: true,
+      });
+    } catch (e) {
+      console.error("Start speech error:", e);
+      setIsRecognizing(false);
+    }
+  };
+
+  // useEffect(() => {
+  //   const listModels = async () => {
+  //     try {
+  //       // ATENTIE: Asta necesita un import diferit, dar pentru test rapid
+  //       // putem incerca un fetch direct daca SDK-ul face figuri.
+  //       const response = await fetch(
+  //         `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.EXPO_PUBLIC_GEMINI_API_KEY}`,
+  //       );
+  //       const data = await response.json();
+  //       console.log("=== AVAILABLE GEMINI MODELS ===");
+  //       // AfisAm doar numele modelelor
+  //       if (data.models) {
+  //         data.models.forEach((m: any) => console.log(m.name));
+  //       } else {
+  //         console.log("No models found or error:", data);
+  //       }
+  //       console.log("===============================");
+  //     } catch (e) {
+  //       console.error("Error listing models:", e);
+  //     }
+  //   };
+
+  //   listModels();
+  // }, []);
   // Auto-scroll
   useEffect(() => {
     setTimeout(() => {
@@ -136,15 +223,18 @@ export default function AiHelperScreen() {
     }, 100);
   }, [messages, selectedImage, isTyping]);
 
+  // Cleanup la iesirea din ecran
   useEffect(() => {
     return () => {
       Keyboard.dismiss();
+      // Important: Oprim microfonul daca utilizatorul iese din ecran in timp ce vorbeste
+      ExpoSpeechRecognitionModule.stop();
     };
   }, []);
 
   // --- HELPERE MODAL ---
   const showModal = (
-    type: "error" | "info" | "selection",
+    type: "error" | "info" | "selection" | "voice-error",
     title: string,
     message: string,
     onConfirm = () => {},
@@ -200,7 +290,7 @@ export default function AiHelperScreen() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
         quality: 0.5,
-        base64: true, // EXTREM DE IMPORTANT
+        base64: true,
         allowsEditing: true,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
@@ -254,12 +344,16 @@ export default function AiHelperScreen() {
     }
   };
 
-  // --- LOGICA CHAT CU GOOGLE GEMINI (GRATUIT) ---
-  // --- LOGICA CHAT CU GOOGLE GEMINI (CU MEMORIE) ---
+  // --- LOGICA CHAT CU GOOGLE GEMINI ---
   const sendMessage = async () => {
     if (inputText.trim().length === 0 && !selectedImage) return;
 
-    // 1. UI Update (User)
+    // IMPORTANT: Daca microfonul e pornit, il oprim cand trimitem mesajul
+    if (isRecognizing) {
+      ExpoSpeechRecognitionModule.stop();
+      setIsRecognizing(false);
+    }
+
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: "user",
@@ -267,12 +361,10 @@ export default function AiHelperScreen() {
       imageUri: selectedImage,
     };
 
-    // Salvăm valorile locale
     const currentText = inputText;
     const currentBase64 = selectedBase64;
 
-    // Actualizăm starea
-    const newMessages = [...messages, userMsg]; // Calculăm noua listă acum ca să o folosim la istoric
+    const newMessages = [...messages, userMsg];
     setMessages(newMessages);
 
     setInputText("");
@@ -281,23 +373,22 @@ export default function AiHelperScreen() {
     setIsTyping(true);
 
     try {
+      // Folosim un model standard stabil
       const model = genAI.getGenerativeModel({
-        model: "gemini-3-flash-preview",
+        model: "gemma-3-27b-it",
       });
       const promptParts: any[] = [];
-      // A. ADAUGĂM SYSTEM PROMPT
+
       promptParts.push(SYSTEM_PROMPT);
-      // B. ADAUGĂM ISTORICUL (AICI ESTE SECRETUL PENTRU MEMORIE)
-      // Convertim mesajele anterioare într-un format text pe care AI-ul să-l citească
-      // Excludem ultimul mesaj (cel curent) pentru că îl adăugăm separat jos
+
       const historyContext = messages
         .map((msg) => {
           const role = msg.sender === "user" ? "User" : "AI Gardener";
-          // Dacă mesajul are text, îl punem. Dacă a fost doar poză, scriem [Image]
           const content = msg.text || "[User sent a photo]";
           return `${role}: ${content}`;
         })
         .join("\n");
+
       if (historyContext) {
         promptParts.push(
           "\n=== CONVERSATION HISTORY ===\n" +
@@ -305,14 +396,13 @@ export default function AiHelperScreen() {
             "\n==========================\n",
         );
       }
-      // C. ADAUGĂM ÎNTREBAREA CURENTĂ
+
       if (currentText) {
         promptParts.push("\nUser Current Question: " + currentText);
       } else if (currentBase64) {
-        // Dacă trimite doar poză fără text
         promptParts.push("\nUser Current Question: Analyze this image.");
       }
-      // D. ADAUGĂM IMAGINEA CURENTĂ (Dacă există)
+
       if (currentBase64) {
         promptParts.push({
           inlineData: {
@@ -321,11 +411,11 @@ export default function AiHelperScreen() {
           },
         });
       }
-      // 4. Generăm Răspunsul
+
       const result = await model.generateContent(promptParts);
       const response = await result.response;
       const text = response.text();
-      // 5. UI Update (AI)
+
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: "ai",
@@ -337,7 +427,7 @@ export default function AiHelperScreen() {
       const errorMsg: Message = {
         id: Date.now().toString(),
         sender: "ai",
-        text: "Oops! I lost connection to the garden. Please try again.",
+        text: "Oops! Sorry! I am working on my garden. Please try again.",
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
@@ -386,23 +476,20 @@ export default function AiHelperScreen() {
             contentContainerStyle={{ paddingBottom: 20 }}
           >
             {messages.map((msg) => {
-              // Verificăm cine e expeditorul pentru a decide stilul
               const isAi = msg.sender === "ai";
 
               return (
                 <View
                   key={msg.id}
                   className={`mb-6 rounded-2xl shadow-sm overflow-hidden ${
-                    // Stiluri condiționate pentru padding și colțuri
                     msg.imageUri ? "p-0" : "p-3"
                   } ${
                     isAi
-                      ? "bg-[#D4E7C5] rounded-tl-none self-start" // AI: Verde, Stânga
-                      : "bg-[#F3F4F6] rounded-tr-none self-end" // User: Gri, Dreapta
+                      ? "bg-[#D4E7C5] rounded-tl-none self-start"
+                      : "bg-[#F3F4F6] rounded-tr-none self-end"
                   }`}
                   style={{ maxWidth: "85%" }}
                 >
-                  {/* --- ZONA IMAGINE (COMUNĂ) --- */}
                   {msg.imageUri && (
                     <View className="bg-white rounded-xl overflow-hidden mb-3 items-center justify-center">
                       <Image
@@ -413,14 +500,11 @@ export default function AiHelperScreen() {
                     </View>
                   )}
 
-                  {/* --- ZONA TEXT (DIFERITĂ: AI vs USER) --- */}
                   {msg.text && (
                     <View className={msg.imageUri ? "p-3" : ""}>
                       {isAi ? (
-                        // CAZUL 1: AI (Folosim componenta Custom Markdown)
                         <MarkdownText content={msg.text} />
                       ) : (
-                        // CAZUL 2: USER (Text simplu, exact cum aveai înainte)
                         <Text className="text-[#1F2937] text-base leading-6">
                           {msg.text}
                         </Text>
@@ -431,7 +515,6 @@ export default function AiHelperScreen() {
               );
             })}
 
-            {/* Indicator de tastare (Rămâne la fel) */}
             {isTyping && (
               <View className="bg-[#D4E7C5] p-3 rounded-2xl rounded-tl-none self-start mb-6 shadow-sm w-16 items-center">
                 <ActivityIndicator color="#5F7A4B" size="small" />
@@ -441,7 +524,6 @@ export default function AiHelperScreen() {
 
           {/* INPUT AREA */}
           <View className="px-4 pt-2 pb-4">
-            {/* PREVIEW POZĂ SELECTATĂ */}
             {selectedImage && (
               <View className="bg-white/90 p-2 rounded-2xl mb-2 self-start relative shadow-sm ml-1 border border-white/20">
                 <Image
@@ -461,9 +543,9 @@ export default function AiHelperScreen() {
               </View>
             )}
 
-            {/* BARĂ INPUT */}
+            {/* BARA INPUT */}
             <View className="bg-white flex-row items-center px-4 rounded-[24px] shadow-sm min-h-[54px]">
-              {/* 1. BUTON CAMERĂ (STANGA) */}
+              {/* 1. BUTON CAMERA */}
               <TouchableOpacity
                 onPress={handleAddPhoto}
                 activeOpacity={0.7}
@@ -472,11 +554,13 @@ export default function AiHelperScreen() {
                 <Camera size={24} color="#5F7A4B" />
               </TouchableOpacity>
 
-              {/* 2. TEXT INPUT (MIJLOC) */}
+              {/* 2. TEXT INPUT */}
               <TextInput
                 className="flex-1 text-base text-[#374151]"
-                placeholder="Ask me anything..."
-                placeholderTextColor="#A0A0A0"
+                placeholder={
+                  isRecognizing ? "Listening..." : "Ask me anything..."
+                }
+                placeholderTextColor={isRecognizing ? "#ef4444" : "#A0A0A0"}
                 multiline
                 style={{
                   paddingTop: 12,
@@ -487,41 +571,138 @@ export default function AiHelperScreen() {
                 onChangeText={setInputText}
               />
 
-              {/* 3. BUTON SEND/MIC (DREAPTA) */}
-              <TouchableOpacity activeOpacity={0.7}>
-                <Mic size={24} color="#5F7A4B" />
+              {/* 3. BUTON SEND/MIC */}
+              <TouchableOpacity
+                onPress={() => setShowLanguagePicker(true)}
+                activeOpacity={0.7}
+                className="mr-2 flex-row items-center bg-gray-100 px-2 py-1.5 rounded-lg"
+              >
+                <Globe size={14} color="#5F7A4B" />
+                <Text className="text-xs font-bold text-[#5F7A4B] ml-1">
+                  {selectedLanguage.short}
+                </Text>
+                <ChevronDown size={12} color="#5F7A4B" />
               </TouchableOpacity>
-              <View className="ml-3">
-                {canSend && (
-                  <TouchableOpacity onPress={sendMessage} activeOpacity={0.7}>
-                    <View className="bg-[#5F7A4B]/10 p-2 rounded-full">
-                      {/* Am pus p-2 și fundal mic ca să iasă în evidență butonul de send */}
-                      <Send
-                        size={20}
-                        color="#5F7A4B"
-                        fill="#5F7A4B"
-                        style={{ marginLeft: 2 }}
-                      />
-                    </View>
-                  </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleMicrophonePress}
+                activeOpacity={0.7}
+              >
+                {isRecognizing ? (
+                  <View className="bg-red-100 p-2 rounded-full animate-pulse">
+                    <StopCircle size={24} color="#ef4444" fill="#ef4444" />
+                  </View>
+                ) : (
+                  <Mic size={24} color="#5F7A4B" />
                 )}
-              </View>
+              </TouchableOpacity>
+
+              {canSend && !isRecognizing && (
+                <TouchableOpacity onPress={sendMessage} className="ml-3">
+                  <View className="bg-[#5F7A4B]/10 p-2 rounded-full">
+                    <Send
+                      size={20}
+                      color="#5F7A4B"
+                      fill="#5F7A4B"
+                      style={{ marginLeft: 2 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* LANGUAGE PICKER MODAL */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showLanguagePicker}
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowLanguagePicker(false)}
+          className="flex-1 justify-center items-center bg-black/60 px-6"
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-[24px] p-6 shadow-2xl"
+          >
+            <View className="flex-row items-center justify-center mb-5">
+              <View className="w-12 h-12 rounded-full items-center justify-center bg-[#5F7A4B]/10">
+                <Globe size={24} color="#5F7A4B" />
+              </View>
+            </View>
+            <Text className="text-xl font-bold text-[#1F2937] mb-4 text-center">
+              Select Language
+            </Text>
+            <View className="gap-2">
+              {LANGUAGE_OPTIONS.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  onPress={() => {
+                    setSelectedLanguage(lang);
+                    setShowLanguagePicker(false);
+                  }}
+                  className={`flex-row items-center justify-between p-4 rounded-xl ${
+                    selectedLanguage.code === lang.code
+                      ? "bg-[#5F7A4B]"
+                      : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`font-medium text-base ${
+                      selectedLanguage.code === lang.code
+                        ? "text-white"
+                        : "text-[#1F2937]"
+                    }`}
+                  >
+                    {lang.label}
+                  </Text>
+                  <Text
+                    className={`font-bold ${
+                      selectedLanguage.code === lang.code
+                        ? "text-white/70"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {lang.short}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowLanguagePicker(false)}
+              className="mt-4 py-2"
+            >
+              <Text className="text-gray-400 font-medium text-center">
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* --- MODALUL PERSONALIZAT --- */}
       <Modal
         animationType="fade"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => {
-          if (modalConfig.type !== "error") setModalVisible(false);
-        }}
+        onRequestClose={() => setModalVisible(false)}
       >
-        <View className="flex-1 justify-center items-center bg-black/60 px-6">
-          <View className="bg-white w-full max-w-sm rounded-[24px] p-6 items-center shadow-2xl">
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+          className="flex-1 justify-center items-center bg-black/60 px-6"
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-[24px] p-6 items-center shadow-2xl"
+          >
             <View
               className="w-16 h-16 rounded-full items-center justify-center mb-5 shadow-sm"
               style={{ backgroundColor: getModalColor() }}
@@ -583,25 +764,19 @@ export default function AiHelperScreen() {
                 </Text>
               </TouchableOpacity>
             )}
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
 }
 
-// --- COMPONENTA AVANSATĂ DE PARSARE MARKDOWN ---
 const MarkdownText = ({ content }: { content: string }) => {
   if (!content) return null;
-
-  // 1. Spargem tot textul în linii
   const lines = content.split("\n");
-
-  // Funcție mică pentru a rand textul care poate conține **BOLD**
   const renderTextWithBold = (text: string) => {
     const parts = text.split("**");
     return parts.map((part, index) => {
-      // Părțile impare sunt între steluțe -> BOLD
       if (index % 2 === 1) {
         return (
           <Text key={index} style={{ fontWeight: "bold" }}>
@@ -617,13 +792,9 @@ const MarkdownText = ({ content }: { content: string }) => {
     <View>
       {lines.map((line, index) => {
         const trimmedLine = line.trim();
-
-        // A. Ignorăm liniile goale, dar punem puțin spațiu
         if (trimmedLine === "") {
           return <View key={index} className="h-2" />;
         }
-
-        // B. HEADERS (### Titlu)
         if (trimmedLine.startsWith("### ") || trimmedLine.startsWith("## ")) {
           const cleanText = trimmedLine.replace(/^#{2,3}\s/, "");
           return (
@@ -635,8 +806,6 @@ const MarkdownText = ({ content }: { content: string }) => {
             </Text>
           );
         }
-
-        // C. BULLET LISTS (- Item sau * Item)
         if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ")) {
           const cleanText = trimmedLine.replace(/^[-*]\s/, "");
           return (
@@ -648,13 +817,10 @@ const MarkdownText = ({ content }: { content: string }) => {
             </View>
           );
         }
-
-        // D. NUMBERED LISTS (1. Item)
-        // Regex simplu pentru a detecta "cifra + punct + spatiu" la inceput
         const numberMatch = trimmedLine.match(/^(\d+\.)\s(.*)/);
         if (numberMatch) {
-          const numberPrefix = numberMatch[1]; // ex: "1."
-          const restOfText = numberMatch[2]; // ex: "Textul meu"
+          const numberPrefix = numberMatch[1];
+          const restOfText = numberMatch[2];
           return (
             <View key={index} className="flex-row ml-2 mb-1 pr-4">
               <Text className="text-[#1F2937] text-base mr-2 mt-1 font-bold">
@@ -666,8 +832,6 @@ const MarkdownText = ({ content }: { content: string }) => {
             </View>
           );
         }
-
-        // E. PARAGRAF NORMAL
         return (
           <Text key={index} className="text-[#1F2937] text-base leading-6 mb-1">
             {renderTextWithBold(line)}

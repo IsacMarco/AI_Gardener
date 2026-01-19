@@ -4,12 +4,12 @@ import { useRouter } from "expo-router";
 import { Camera, Mic, Plus, Search, Sprout, User } from "lucide-react-native";
 import React from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StatusBar,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
@@ -18,7 +18,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { plants, loading } = usePlants();
 
-  // Luăm doar primele 4 plante
+  // Luam doar primele 4 plante
   const recentPlants = plants.slice(0, 4);
 
   return (
@@ -53,7 +53,7 @@ export default function HomeScreen() {
               <Text className="text-xl font-bold text-[#1F2937] mb-5 pl-1">
                 Your Garden at a Glance
               </Text>
-              {/* Afișăm "See all" doar dacă există plante */}
+              {/* Afisam "See all" doar daca exista plante */}
               {recentPlants.length > 0 && (
                 <Text
                   className="text-md text-gray-600 mb-5 pl-1"
@@ -72,7 +72,7 @@ export default function HomeScreen() {
               ) : // Aici am facut modificarea
               recentPlants.length === 0 ? (
                 <TouchableOpacity
-                  onPress={() => router.push("/addPlant")} // <--- Asigură-te că ruta e corectă (ex: /addPlant sau /camera)
+                  onPress={() => router.push("/addPlant")} // <--- Asigura-te ca ruta e corecta (ex: /addPlant sau /camera)
                   activeOpacity={0.7}
                   className="bg-white/50 border-2 border-dashed border-[#5F7A4B]/40 rounded-2xl p-6 items-center justify-center h-48"
                 >

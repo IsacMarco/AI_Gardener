@@ -11,7 +11,7 @@ import {
   Image as ImageIcon,
   Minus,
   Plus,
-} from "lucide-react-native"; // Am adaugat iconite noi
+} from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -37,7 +37,6 @@ export default function EditPlant() {
 
   const { plants, refreshPlants } = usePlants();
 
-  // Stări
   const [plantName, setPlantName] = useState("");
   const [species, setSpecies] = useState("");
   const [location, setLocation] = useState("");
@@ -51,18 +50,14 @@ export default function EditPlant() {
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // --- LOGICĂ PENTRU FORMATAREA TIMPULUI (Auto-colon) ---
   const handleTimeChange = (text: string) => {
-    // Scoatem tot ce nu e cifră
     const cleaned = text.replace(/[^0-9]/g, "");
     let formatted = cleaned;
 
-    // Adăugăm ':' după primele 2 cifre
     if (cleaned.length > 2) {
       formatted = `${cleaned.slice(0, 2)}:${cleaned.slice(2, 4)}`;
     }
 
-    // Validări simple pentru ore (00-23) și minute (00-59)
     if (cleaned.length >= 2) {
       const hours = parseInt(cleaned.slice(0, 2));
       if (hours > 23)
@@ -76,7 +71,6 @@ export default function EditPlant() {
 
     setWateringTime(formatted.slice(0, 5));
   };
-  // -----------------------------------------------------
 
   useEffect(() => {
     const currentPlant = plants.find((p) => p._id === id);
@@ -166,7 +160,6 @@ export default function EditPlant() {
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
       />
 
-      {/* MODAL SUCCES */}
       <Modal visible={showSuccessModal} transparent animationType="fade">
         <View className="flex-1 justify-center items-center bg-black/60 px-6">
           <View className="bg-white p-6 rounded-3xl items-center w-full max-w-sm">
@@ -207,9 +200,11 @@ export default function EditPlant() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1"
         >
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={{ paddingTop: 15 }}
+          >
             <View className="bg-[#E8E6DE]/95 mt-4 rounded-t-[35px] px-6 pt-8 pb-10 min-h-screen">
-              {/* IMAGINE */}
               <View className="items-center -mt-16 mb-6">
                 <TouchableOpacity onPress={pickNewPhoto} className="relative">
                   <View className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-200">
@@ -230,7 +225,6 @@ export default function EditPlant() {
                 </TouchableOpacity>
               </View>
 
-              {/* Inputs de bază */}
               <View className="bg-white p-4 rounded-2xl shadow-sm mb-4">
                 <Text className="text-gray-400 font-bold text-xs uppercase mb-1 ml-1">
                   Plant Name
@@ -267,9 +261,7 @@ export default function EditPlant() {
                 />
               </View>
 
-              {/* --- SECȚIUNEA UDARE REDESENATĂ --- */}
               <View className="bg-white rounded-3xl p-5 mb-8 shadow-sm">
-                {/* Header cu Switch */}
                 <View className="flex-row justify-between items-center mb-2">
                   <View className="flex-row items-center gap-3">
                     <View
@@ -299,10 +291,8 @@ export default function EditPlant() {
                   />
                 </View>
 
-                {/* Detalii Expandabile */}
                 {remindersEnabled && (
                   <View className="mt-4 pt-4 border-t border-gray-100">
-                    {/* Frequency Row */}
                     <View className="flex-row items-center justify-between mb-6">
                       <View className="flex-row items-center gap-2">
                         <Calendar size={18} color="#9CA3AF" />
@@ -339,7 +329,6 @@ export default function EditPlant() {
                       </View>
                     </View>
 
-                    {/* Time Row */}
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-2">
                         <Clock size={18} color="#9CA3AF" />
@@ -362,9 +351,7 @@ export default function EditPlant() {
                   </View>
                 )}
               </View>
-              {/* ---------------------------------- */}
 
-              {/* Buton Save */}
               <TouchableOpacity
                 onPress={handleUpdate}
                 disabled={loading || !plantName.trim()}

@@ -69,7 +69,7 @@ export default function AddPlant() {
   };
   const closeModal = () => {
     setModalVisible(false);
-    // Dacă a fost succes, navigăm înapoi după închidere
+    // Daca a fost succes, navigam inapoi dupa inchidere
     if (modalConfig.type === "success") {
       router.back();
     }
@@ -105,7 +105,7 @@ export default function AddPlant() {
     };
     //const mongoServer_add = "http://10.0.2.2:3000/add-plant";
     try {
-      // Creăm un Promise care dă reject după X secunde
+      // Cream un Promise care da reject dupa X secunde
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
           reject(new Error("Timeout"));
@@ -121,7 +121,7 @@ export default function AddPlant() {
           body: JSON.stringify(payload),
         },
       );
-      // Folosim Promise.race pentru a vedea care termină primul
+      // Folosim Promise.race pentru a vedea care termina primul
       const response: any = await Promise.race([fetchPromise, timeoutPromise]);
       const data = await response.json();
       if (response.ok) {
@@ -159,7 +159,7 @@ export default function AddPlant() {
   };
   // --- LOGICA FOTO ---
   const pickFromCamera = async () => {
-    setModalVisible(false); // Închidem modalul de selecție
+    setModalVisible(false); // inchidem modalul de selectie
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.status !== "granted") {
       setTimeout(
@@ -186,7 +186,7 @@ export default function AddPlant() {
     }
   };
   const pickFromGallery = async () => {
-    setModalVisible(false); // Închidem modalul de selecție
+    setModalVisible(false); // inchidem modalul de selectie
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
       setTimeout(
@@ -221,7 +221,7 @@ export default function AddPlant() {
       );
       return;
     }
-    // Deschidem modalul în mod "selection"
+    // Deschidem modalul in mod "selection"
     showModal(
       "selection",
       "Add Photo",
