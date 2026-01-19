@@ -1,6 +1,6 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 
 const app = express();
 
@@ -10,14 +10,15 @@ const app = express();
 app.use(cors());
 
 // Mărim limita de date primite la 50MB ca să încapă pozele Base64!
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // --- 2. CONECTARE LA BAZA DE DATE ---
 // 'aigardener' este numele bazei de date. Se creează singură.
-mongoose.connect('mongodb://127.0.0.1:27017/aigardener')
-  .then(() => console.log('✅ Conectat la MongoDB!'))
-  .catch(err => console.error('❌ Eroare conectare MongoDB:', err));
+mongoose
+  .connect("mongodb://127.0.0.1:27017/aigardener")
+  .then(() => console.log("✅ Conectat la MongoDB!"))
+  .catch((err) => console.error("❌ Eroare conectare MongoDB:", err));
 
 // --- 3. DEFINIREA MODELULUI (Schema plantei) ---
 const plantSchema = new mongoose.Schema({
@@ -29,25 +30,25 @@ const plantSchema = new mongoose.Schema({
   watering: {
     enabled: Boolean,
     frequency: Number,
-    time: String
+    time: String,
   },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 
-const Plant = mongoose.model('Plant', plantSchema);
+const Plant = mongoose.model("Plant", plantSchema);
 
 // --- 4. RUTA API (Unde trimite telefonul datele) ---
-app.post('/add-plant', async (req, res) => {
+app.post("/add-plant", async (req, res) => {
   try {
-    const { 
-      userId,  
-      name, 
-      species, 
-      location, 
-      remindersActive, 
-      frequency, 
-      preferredTime, 
-      imageBase64 
+    const {
+      userId,
+      name,
+      species,
+      location,
+      remindersActive,
+      frequency,
+      preferredTime,
+      imageBase64,
     } = req.body;
 
     const newPlant = new Plant({
@@ -59,15 +60,14 @@ app.post('/add-plant', async (req, res) => {
       watering: {
         enabled: remindersActive,
         frequency: remindersActive ? frequency : null,
-        time: remindersActive ? preferredTime : null
-      }
+        time: remindersActive ? preferredTime : null,
+      },
     });
 
     await newPlant.save();
 
     console.log(`✅ Plantă salvată: ${name}`);
     res.status(201).json({ message: "Succes! Planta e în bază." });
-
   } catch (error) {
     console.error("❌ Eroare la salvare:", error);
     res.status(500).json({ error: "Eroare server: " + error.message });
@@ -75,7 +75,7 @@ app.post('/add-plant', async (req, res) => {
 });
 
 // --- RUTA PENTRU AFISAREA PLANTELOR ---
-app.get('/plants', async (req, res) => {
+app.get("/plants", async (req, res) => {
   try {
     const { userId } = req.query; // Citim ID-ul din URL
 
@@ -95,8 +95,8 @@ app.get('/plants', async (req, res) => {
   }
 });
 
-// Exemplu in serverul tau Node.js
-app.delete('/plants/:id', async (req, res) => {
+// RUTA DELETE
+app.delete("/plants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await Plant.findByIdAndDelete(id);
@@ -107,14 +107,16 @@ app.delete('/plants/:id', async (req, res) => {
 });
 
 // RUTA UPDATE
-app.put('/plants/:id', async (req, res) => {
+app.put("/plants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     // Structura ta poate varia (ex: updates.name, updates.watering etc)
     // Aici facem un update simplu care suprascrie campurile trimise
-    const updatedPlant = await Plant.findByIdAndUpdate(id, updates, { new: true });
+    const updatedPlant = await Plant.findByIdAndUpdate(id, updates, {
+      new: true,
+    });
 
     if (!updatedPlant) {
       return res.status(404).json({ error: "Plant not found" });
@@ -130,7 +132,7 @@ app.put('/plants/:id', async (req, res) => {
 // --- 5. PORNIRE SERVER ---
 // Ascultam pe 0.0.0.0 ca sa fim vizibili in retea, nu doar local
 const PORT = 3000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Serverul rulează!`);
   console.log(`📡 Pentru telefon, folosește IP-ul PC-ului tău:3000`);
 });

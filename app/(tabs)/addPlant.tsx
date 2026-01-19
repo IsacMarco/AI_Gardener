@@ -103,9 +103,7 @@ export default function AddPlant() {
       preferredTime: wateringTime,
       imageBase64: photoBase64 ? `data:image/jpeg;base64,${photoBase64}` : null,
     };
-    //const mongoServer_add = "http://10.0.2.2:3000/add-plant";
     try {
-      // Cream un Promise care da reject dupa X secunde
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
           reject(new Error("Timeout"));

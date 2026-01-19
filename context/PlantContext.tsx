@@ -18,8 +18,6 @@ type Plant = {
     enabled: boolean;
     frequency: number;
     time: string;
-    remindersActive?: boolean; // Am adaugat si asta ca era in AddPlant
-    preferredTime?: string;
   };
   createdAt?: string;
 };
@@ -65,12 +63,11 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // --- LOGICA NOUa PENTRU sTERGERE ---
+  // --- LOGICA NOUA PENTRU STERGERE ---
   const deletePlant = async (id: string): Promise<boolean> => {
     try {
       // 1. URL-ul pentru stergere.
-      // NOTa: Asigura-te ca in backend ai ruta DELETE '/plants/:id' sau '/delete-plant/:id'
-      //const DELETE_URL = `http://10.0.2.2:3000/plants/${id}`;
+      // NOTA: Asigura-te ca in backend ai ruta DELETE '/plants/:id' sau '/delete-plant/:id'
 
       const response = await fetch(
         process.env.EXPO_PUBLIC_MONGO_SERVER_URL + `/plants/${id}`,
