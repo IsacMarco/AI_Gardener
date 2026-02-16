@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-// 1. Modificam importul pentru a folosi varianta modulara
 import auth, {
   FirebaseAuthTypes,
   onAuthStateChanged,

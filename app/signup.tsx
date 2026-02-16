@@ -189,7 +189,6 @@ export default function SignUpScreen() {
           activeOpacity={1}
           onPress={handleCloseModal}
         >
-          {/* Oprim propagarea touch-ului pentru a nu inchide modalul cand apasam pe el */}
           <TouchableOpacity
             activeOpacity={1}
             style={{

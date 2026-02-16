@@ -18,7 +18,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { plants, loading } = usePlants();
 
-  // Luam doar primele 4 plante
   const recentPlants = plants.slice(0, 4);
 
   return (
@@ -35,7 +34,6 @@ export default function HomeScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
           <View className="items-center mt-4 mb-8">
             <Text className="text-3xl font-bold text-white mb-6 tracking-wide shadow-sm">
               Welcome Home!
@@ -53,7 +51,6 @@ export default function HomeScreen() {
               <Text className="text-xl font-bold text-[#1F2937] mb-5 pl-1">
                 Your Garden at a Glance
               </Text>
-              {/* Afisam "See all" doar daca exista plante */}
               {recentPlants.length > 0 && (
                 <Text
                   className="text-md text-gray-600 mb-5 pl-1"
@@ -65,14 +62,12 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* ZONA DE PLANTE */}
             <View className="mb-6">
               {loading ? (
                 <ActivityIndicator size="small" color="#5F7A4B" />
-              ) : // Aici am facut modificarea
-              recentPlants.length === 0 ? (
+              ) : recentPlants.length === 0 ? (
                 <TouchableOpacity
-                  onPress={() => router.push("/addPlant")} // <--- Asigura-te ca ruta e corecta (ex: /addPlant sau /camera)
+                  onPress={() => router.push("/addPlant")}
                   activeOpacity={0.7}
                   className="bg-white/50 border-2 border-dashed border-[#5F7A4B]/40 rounded-2xl p-6 items-center justify-center h-48"
                 >
@@ -102,7 +97,7 @@ export default function HomeScreen() {
                       : require("../../assets/icons/plants_icon.png");
                     let scheduleText = "No schedule";
                     if (plant.watering?.frequency) {
-                      scheduleText = `Every ${plant.watering.frequency} days`;
+                      scheduleText = `Every ${plant.watering.frequency} days at ${plant.watering.time}`;
                     }
                     return (
                       <PlantCard
@@ -118,7 +113,6 @@ export default function HomeScreen() {
                 </ScrollView>
               )}
             </View>
-            {/* AI Helper Section */}
             <Text className="text-xl font-bold text-[#1F2937] mb-4 pl-1 pt-2">
               Talk to AI Gardener
             </Text>
@@ -140,7 +134,6 @@ export default function HomeScreen() {
                 </View>
               </View>
             </TouchableOpacity>
-            {/* Daily Tip Section */}
             <View className="mb-20">
               <View className="flex-row justify-between items-start">
                 <View className="flex-1 mr-4">

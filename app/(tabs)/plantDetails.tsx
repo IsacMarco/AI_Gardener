@@ -46,10 +46,6 @@ export default function PlantDetailsScreen() {
     : require("../../assets/icons/plants_icon.png");
   // Verificam daca alertele sunt active
   const isWateringEnabled = plant.watering?.enabled;
-  const handleWaterPlant = () => {
-    setWateredToday(true);
-    Alert.alert("Yey!", `You just watered ${plant.name}. Good job! 🌱`);
-  };
   const handleDelete = async () => {
     try {
       await deletePlant(plant._id);
@@ -63,8 +59,6 @@ export default function PlantDetailsScreen() {
   return (
     <View className="flex-1 bg-[#F2F1ED]">
       <StatusBar barStyle="light-content" />
-
-      {/* --- HERO IMAGE --- */}
       <View className="absolute top-0 w-full" style={{ height: height * 0.45 }}>
         {plant.imageBase64 ? (
           <Image
@@ -88,7 +82,6 @@ export default function PlantDetailsScreen() {
         />
       </View>
 
-      {/* --- HEADER --- */}
       <SafeAreaView className="absolute top-0 w-full flex-row justify-between px-4 z-10">
         <TouchableOpacity
           onPress={() => router.back()}
@@ -113,10 +106,8 @@ export default function PlantDetailsScreen() {
         </View>
       </SafeAreaView>
 
-      {/* --- MAIN CONTENT --- */}
       <View className="flex-1" style={{ paddingTop: height * 0.38 }}>
         <View className="bg-[#F2F1ED] rounded-t-[40px] px-6 pt-8 pb-20 min-h-screen shadow-2xl">
-          {/* Titlu */}
           <View className="mb-6">
             <Text className="text-3xl font-bold text-[#1F2937] mb-1">
               {plant.name}
@@ -125,20 +116,15 @@ export default function PlantDetailsScreen() {
               {plant.species || "Unknown Species"}
             </Text>
           </View>
-
-          {/* --- GRID DETALII --- */}
           <View className="flex-row flex-wrap justify-between mb-8">
-            {/* 1. Card Locatie */}
             <View className="w-[48%] bg-white p-3 rounded-2xl shadow-sm mb-4 flex-row items-center">
               <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center mr-3 flex-shrink-0">
                 <MapPin size={20} color="#F59E0B" />
               </View>
-              {/* Adaugat flex-1 pentru a gestiona latimea textului */}
               <View className="flex-1">
                 <Text className="text-xs text-gray-400 font-bold uppercase">
                   Location
                 </Text>
-                {/* Permitem 2 linii, apoi punem ... */}
                 <Text
                   className="text-gray-800 font-semibold text-sm"
                   numberOfLines={2}
@@ -149,7 +135,6 @@ export default function PlantDetailsScreen() {
               </View>
             </View>
 
-            {/* 2. Card Frecventa */}
             {isWateringEnabled && (
               <View className="w-[48%] bg-white p-3 rounded-2xl shadow-sm mb-4 flex-row items-center">
                 <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3 flex-shrink-0">
@@ -166,7 +151,6 @@ export default function PlantDetailsScreen() {
               </View>
             )}
 
-            {/* 3. Card Ora */}
             {isWateringEnabled && (
               <View className="w-[48%] bg-white p-3 rounded-2xl shadow-sm mb-4 flex-row items-center">
                 <View className="w-10 h-10 bg-purple-100 rounded-full items-center justify-center mr-3 flex-shrink-0">
@@ -183,7 +167,6 @@ export default function PlantDetailsScreen() {
               </View>
             )}
 
-            {/* 4. Card Alert Status */}
             <View className="w-[48%] bg-white p-3 rounded-2xl shadow-sm flex-row items-center mb-4">
               <View
                 className={`w-10 h-10 rounded-full items-center justify-center mr-3 flex-shrink-0 ${
@@ -281,7 +264,6 @@ export default function PlantDetailsScreen() {
         </View>
       </View>
 
-      {/* --- MODAL CONFIRMARE STERGERE --- */}
       <Modal
         animationType="fade"
         transparent={true}

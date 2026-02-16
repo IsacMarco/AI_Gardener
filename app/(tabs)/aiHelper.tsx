@@ -32,7 +32,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// --- IMPORT SPEECH RECOGNITION ---
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -93,8 +92,6 @@ const LANGUAGE_OPTIONS = [
 export default function AiHelperScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
-
-  // --- STATE CHAT ---
   const [inputText, setInputText] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedBase64, setSelectedBase64] = useState<string | null>(null);
@@ -107,7 +104,6 @@ export default function AiHelperScreen() {
     },
   ]);
 
-  // --- STATE MODAL ---
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
     type: "error" | "info" | "selection" | "voice-error";
@@ -120,17 +116,14 @@ export default function AiHelperScreen() {
     message: "",
   });
 
-  // --- LOGICA SPEECH TO TEXT ---
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGE_OPTIONS[0]);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
-  // 1. Cand incepe sa vorbeasca efectiv
   useSpeechRecognitionEvent("start", () => {
     setIsRecognizing(true);
   });
 
-  // 2. Cand primeste rezultate (in timp real)
   useSpeechRecognitionEvent("result", (event) => {
     if (event.results && event.results.length > 0) {
       const lastResult = event.results[event.results.length - 1];
@@ -140,7 +133,6 @@ export default function AiHelperScreen() {
     }
   });
 
-  // 3. Cand apare o eroare
   useSpeechRecognitionEvent("error", (error) => {
     console.log("Speech error:", error);
     showModal(
@@ -151,21 +143,17 @@ export default function AiHelperScreen() {
     setIsRecognizing(false);
   });
 
-  // 4. Cand se opreste (de la sine sau manual)
   useSpeechRecognitionEvent("end", () => {
     setIsRecognizing(false);
   });
 
-  // Functia de control Microfon
   const handleMicrophonePress = async () => {
-    // A. Daca deja inregistreaza, oprim fortat
     if (isRecognizing) {
       ExpoSpeechRecognitionModule.stop();
       setIsRecognizing(false);
       return;
     }
 
-    // B. Altfel, pornim
     try {
       const permission =
         await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -179,7 +167,6 @@ export default function AiHelperScreen() {
         return;
       }
 
-      // Pornim recunoasterea
       ExpoSpeechRecognitionModule.start({
         lang: selectedLanguage.code,
         interimResults: true,
@@ -223,16 +210,13 @@ export default function AiHelperScreen() {
     }, 100);
   }, [messages, selectedImage, isTyping]);
 
-  // Cleanup la iesirea din ecran
   useEffect(() => {
     return () => {
       Keyboard.dismiss();
-      // Important: Oprim microfonul daca utilizatorul iese din ecran in timp ce vorbeste
       ExpoSpeechRecognitionModule.stop();
     };
   }, []);
 
-  // --- HELPERE MODAL ---
   const showModal = (
     type: "error" | "info" | "selection" | "voice-error",
     title: string,
@@ -264,7 +248,6 @@ export default function AiHelperScreen() {
     return "#5F7A4B";
   };
 
-  // --- LOGICA FOTO ---
   const handleAddPhoto = async () => {
     if (Platform.OS === "web") {
       showModal(
@@ -344,11 +327,9 @@ export default function AiHelperScreen() {
     }
   };
 
-  // --- LOGICA CHAT CU GOOGLE GEMINI ---
   const sendMessage = async () => {
     if (inputText.trim().length === 0 && !selectedImage) return;
 
-    // IMPORTANT: Daca microfonul e pornit, il oprim cand trimitem mesajul
     if (isRecognizing) {
       ExpoSpeechRecognitionModule.stop();
       setIsRecognizing(false);
@@ -373,7 +354,6 @@ export default function AiHelperScreen() {
     setIsTyping(true);
 
     try {
-      // Folosim un model standard stabil
       const model = genAI.getGenerativeModel({
         model: "gemma-3-27b-it",
       });
@@ -448,7 +428,6 @@ export default function AiHelperScreen() {
       />
 
       <SafeAreaView className="flex-1">
-        {/* HEADER */}
         <View className="flex-row items-center justify-between px-4 py-2 mb-2">
           <TouchableOpacity
             onPress={() => router.back()}
@@ -467,7 +446,6 @@ export default function AiHelperScreen() {
           className="flex-1"
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          {/* LISTA MESAJE */}
           <ScrollView
             ref={scrollViewRef}
             className="flex-1 px-4"
@@ -522,7 +500,6 @@ export default function AiHelperScreen() {
             )}
           </ScrollView>
 
-          {/* INPUT AREA */}
           <View className="px-4 pt-2 pb-4">
             {selectedImage && (
               <View className="bg-white/90 p-2 rounded-2xl mb-2 self-start relative shadow-sm ml-1 border border-white/20">
@@ -543,9 +520,7 @@ export default function AiHelperScreen() {
               </View>
             )}
 
-            {/* BARA INPUT */}
             <View className="bg-white flex-row items-center px-4 rounded-[24px] shadow-sm min-h-[54px]">
-              {/* 1. BUTON CAMERA */}
               <TouchableOpacity
                 onPress={handleAddPhoto}
                 activeOpacity={0.7}
@@ -554,7 +529,6 @@ export default function AiHelperScreen() {
                 <Camera size={24} color="#5F7A4B" />
               </TouchableOpacity>
 
-              {/* 2. TEXT INPUT */}
               <TextInput
                 className="flex-1 text-base text-[#374151]"
                 placeholder={
@@ -571,7 +545,6 @@ export default function AiHelperScreen() {
                 onChangeText={setInputText}
               />
 
-              {/* 3. BUTON SEND/MIC */}
               <TouchableOpacity
                 onPress={() => setShowLanguagePicker(true)}
                 activeOpacity={0.7}
@@ -614,7 +587,6 @@ export default function AiHelperScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      {/* LANGUAGE PICKER MODAL */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -686,7 +658,6 @@ export default function AiHelperScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* --- MODALUL PERSONALIZAT --- */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -716,7 +687,6 @@ export default function AiHelperScreen() {
               {modalConfig.message}
             </Text>
 
-            {/* Butoane Modal */}
             {modalConfig.type === "selection" ? (
               <View className="w-full gap-3">
                 <TouchableOpacity

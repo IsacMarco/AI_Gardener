@@ -92,11 +92,10 @@
 // export default _layout
 import { Stack } from "expo-router";
 import React from "react";
-import { PlantProvider } from "../../context/PlantContext"; // <--- 1. Importam contextul creat
+import { PlantProvider } from "../../context/PlantContext";
 
 export default function TabsLayout() {
   return (
-    // 2. imbracam toata navigatia in Provider
     <PlantProvider>
       <Stack
         screenOptions={{

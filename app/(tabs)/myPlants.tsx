@@ -1,10 +1,10 @@
 import PlantCardExtended from "@/components/PlantCardExtended";
 import { Ionicons } from "@expo/vector-icons";
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth"; // <--- Asigura-te ca calea e corecta
+import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router"; // <--- Import useFocusEffect
+import { useRouter } from "expo-router";
 import { Brain, Plus } from "lucide-react-native";
-import React, { useEffect, useState } from "react"; // <--- Import useState, useCallback
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -15,20 +15,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
-
-// Definim tipul datelor care vin de la server (MongoDB)
-type PlantFromDB = {
-  _id: string;
-  name: string;
-  species?: string;
-  location?: string;
-  imageBase64?: string;
-  watering?: {
-    enabled: boolean;
-    frequency: number;
-    time: string;
-  };
-};
 
 export default function MyPlants() {
   const router = useRouter();
@@ -51,7 +37,7 @@ export default function MyPlants() {
             }}
           />
           <Text className="text-gray-600 text-lg">
-            Please log in to add a plant.
+            Please log in to see your plants.
           </Text>
           <TouchableOpacity
             onPress={() => router.replace("/")}
@@ -83,7 +69,6 @@ export default function MyPlants() {
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
       />
       <SafeAreaView className="flex-1">
-        {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-2 mb-2">
           <TouchableOpacity
             onPress={() => router.back()}
@@ -98,8 +83,6 @@ export default function MyPlants() {
             My Garden
           </Text>
         </View>
-
-        {/* Containerul Principal Alb */}
         <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8 pb-4">
           {loading ? (
             <View className="flex-1 justify-center items-center">
@@ -119,24 +102,20 @@ export default function MyPlants() {
                 </View>
               ) : (
                 plants.map((plant) => {
-                  // Logica pentru a crea textul "Every X days"
                   let scheduleText = "No schedule";
                   if (plant.watering?.enabled && plant.watering?.frequency) {
                     scheduleText = `Every ${plant.watering.frequency} days at ${plant.watering.time}`;
                   }
 
-                  // Logica pentru imagine: Base64 sau placeholder
-                  // PlantCardExtended asteapta probabil un obiect {uri: ...} sau require(...)
                   const imageSource = plant.imageBase64
                     ? { uri: plant.imageBase64 }
-                    : require("../../assets/icons/plants_icon.png"); // Placeholder-ul tau
-
+                    : require("../../assets/icons/plants_icon.png");
                   return (
                     <PlantCardExtended
-                      key={plant._id} // MongoDB foloseste _id
+                      key={plant._id}
                       id={plant._id}
                       name={plant.name}
-                      schedule={scheduleText} // Text generat din datele reale
+                      schedule={scheduleText}
                       image={imageSource}
                       specie={plant.species || "Unknown species"}
                     />
@@ -146,7 +125,6 @@ export default function MyPlants() {
             </ScrollView>
           )}
 
-          {/* Butoanele de jos (AI & Add) */}
           <View className="absolute bottom-5 left-5 right-5 flex-row items-center justify-between">
             <TouchableOpacity
               activeOpacity={0.8}

@@ -3,24 +3,17 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const app = express();
-
-// --- 1. CONFIGURĂRI IMPORTANTE ---
-
-// CORS permite telefonului să vorbească cu PC-ul
 app.use(cors());
 
-// Mărim limita de date primite la 50MB ca să încapă pozele Base64!
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// --- 2. CONECTARE LA BAZA DE DATE ---
-// 'aigardener' este numele bazei de date. Se creează singură.
 mongoose
   .connect("mongodb://127.0.0.1:27017/aigardener")
-  .then(() => console.log("✅ Conectat la MongoDB!"))
-  .catch((err) => console.error("❌ Eroare conectare MongoDB:", err));
+  .then(() => console.log("✅ Connected to MongoDB!"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// --- 3. DEFINIREA MODELULUI (Schema plantei) ---
+// SCHEMA MONGOOSE
 const plantSchema = new mongoose.Schema({
   userId: String,
   name: { type: String, required: true },
@@ -31,13 +24,14 @@ const plantSchema = new mongoose.Schema({
     enabled: Boolean,
     frequency: Number,
     time: String,
+    notificationId: String,
   },
   createdAt: { type: Date, default: Date.now },
 });
 
 const Plant = mongoose.model("Plant", plantSchema);
 
-// --- 4. RUTA API (Unde trimite telefonul datele) ---
+// API ROUTE
 app.post("/add-plant", async (req, res) => {
   try {
     const {
@@ -49,6 +43,7 @@ app.post("/add-plant", async (req, res) => {
       frequency,
       preferredTime,
       imageBase64,
+      notificationId
     } = req.body;
 
     const newPlant = new Plant({
@@ -61,59 +56,53 @@ app.post("/add-plant", async (req, res) => {
         enabled: remindersActive,
         frequency: remindersActive ? frequency : null,
         time: remindersActive ? preferredTime : null,
+        notificationId: remindersActive ? notificationId : null,
       },
     });
 
     await newPlant.save();
-
-    console.log(`✅ Plantă salvată: ${name}`);
-    res.status(201).json({ message: "Succes! Planta e în bază." });
+    console.log(`✅ Plant saved: ${name}`);
+    res.status(201).json({ message: "Success! Plant is in the database." });
   } catch (error) {
-    console.error("❌ Eroare la salvare:", error);
-    res.status(500).json({ error: "Eroare server: " + error.message });
+    console.error("❌ Error saving plant:", error);
+    res.status(500).json({ error: "Server error: " + error.message });
   }
 });
 
-// --- RUTA PENTRU AFISAREA PLANTELOR ---
+// Show all plants for a user
 app.get("/plants", async (req, res) => {
   try {
-    const { userId } = req.query; // Citim ID-ul din URL
+    const { userId } = req.query;
 
     if (!userId) {
-      return res.status(400).json({ error: "Lipseste userId!" });
+      return res.status(400).json({ error: "Missing userId!" });
     }
 
-    console.log(`📥 Caut plantele pentru userul: ${userId}`);
-
-    // Cautam in MongoDB doar plantele acelui user
-    // .sort({ createdAt: -1 }) le pune pe cele mai noi primele
+    console.log(`📥 Fetching plants for user: ${userId}`);
     const plants = await Plant.find({ userId: userId }).sort({ createdAt: -1 });
-    res.json(plants); // Le trimitem inapoi ca JSON (lista)
+    res.json(plants); 
   } catch (error) {
-    console.error("Eroare la citire:", error);
-    res.status(500).json({ error: "Nu am putut citi plantele." });
+    console.error("Error reading plants:", error);
+    res.status(500).json({ error: "Plants could not be retrieved." });
   }
 });
 
-// RUTA DELETE
+// Delete plant route
 app.delete("/plants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await Plant.findByIdAndDelete(id);
     res.status(200).json({ message: "Plant deleted" });
   } catch (error) {
-    res.status(500).json({ error: "Could not delete" });
+    res.status(500).json({ error: "Could not delete plant" });
   }
 });
 
-// RUTA UPDATE
+// Update plant route
 app.put("/plants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-
-    // Structura ta poate varia (ex: updates.name, updates.watering etc)
-    // Aici facem un update simplu care suprascrie campurile trimise
     const updatedPlant = await Plant.findByIdAndUpdate(id, updates, {
       new: true,
     });
@@ -124,15 +113,14 @@ app.put("/plants/:id", async (req, res) => {
 
     res.json(updatedPlant);
   } catch (error) {
-    console.error("Error updating:", error);
+    console.error("Error updating plant:", error);
     res.status(500).json({ error: "Could not update plant" });
   }
 });
 
-// --- 5. PORNIRE SERVER ---
-// Ascultam pe 0.0.0.0 ca sa fim vizibili in retea, nu doar local
+// START SERVER
 const PORT = 3000;
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Serverul rulează!`);
-  console.log(`📡 Pentru telefon, folosește IP-ul PC-ului tău:3000`);
+  console.log(`🚀 Server listening on port ${PORT}`);
+  console.log(`📡 For the phone, use your PC's IP address: ${PORT}`);
 });

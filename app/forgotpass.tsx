@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import auth from "@react-native-firebase/auth"; // Importul Firebase
+import auth from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -23,11 +23,9 @@ const { height } = Dimensions.get("window");
 export default function ForgotPasswordScreen() {
   const router = useRouter();
 
-  // Stari pentru logica
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Stari pentru Modalul Personalizat
   const [modalVisible, setModalVisible] = useState(false);
   const [modalContent, setModalContent] = useState<{
     title: string;
@@ -36,10 +34,9 @@ export default function ForgotPasswordScreen() {
   }>({
     title: "",
     message: "",
-    type: "success", // 'success' sau 'error'
+    type: "success",
   });
-
-  // Functie ajutatoare pentru a deschide modalul
+  // Functie pentru afisarea modalului cu continut personalizat
   const showModal = (
     title: string,
     message: string,
@@ -52,7 +49,6 @@ export default function ForgotPasswordScreen() {
   // Functie pentru inchiderea modalului
   const handleCloseModal = () => {
     setModalVisible(false);
-    // Daca operatiunea a fost un succes, ne intoarcem la Login
     if (modalContent.type === "success") {
       router.back();
     }
@@ -60,7 +56,6 @@ export default function ForgotPasswordScreen() {
 
   // Logica principala de Resetare
   const handleReset = async () => {
-    // 1. Validare simpla
     if (!email.trim()) {
       showModal(
         "Missing Email",
@@ -71,16 +66,13 @@ export default function ForgotPasswordScreen() {
     }
     setLoading(true);
     try {
-      // 2. Apelul catre Firebase
       await auth().sendPasswordResetEmail(email.trim());
-      // 3. Succes
       showModal(
         "Check your Inbox",
         `We have sent a password recovery link to:\n${email}\n\nPlease check your spam folder too!`,
         "success",
       );
     } catch (error: any) {
-      // 4. Gestionare Erori
       console.log(error);
       let msg = "Something went wrong. Please try again later.";
       if (error.code === "auth/invalid-email") {
@@ -96,13 +88,11 @@ export default function ForgotPasswordScreen() {
   return (
     <View className="flex-1">
       <StatusBar barStyle="light-content" />
-      {/* Fundal Gradient */}
       <LinearGradient
         colors={["#5F7A4B", "#8C8673", "#AFA696"]}
         locations={[0, 0.6, 1]}
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
       />
-      {/* --- MODALUL PERSONALIZAT --- */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -111,7 +101,6 @@ export default function ForgotPasswordScreen() {
       >
         <View className="flex-1 bg-black/60 justify-center items-center px-6">
           <View className="bg-white w-full max-w-sm rounded-[24px] p-6 items-center shadow-2xl">
-            {/* Iconita din Modal (Verde sau Rosie) */}
             <View
               className={`w-16 h-16 rounded-full items-center justify-center mb-4 ${modalContent.type === "success" ? "bg-green-100" : "bg-red-100"}`}
             >
@@ -148,10 +137,8 @@ export default function ForgotPasswordScreen() {
           </View>
         </View>
       </Modal>
-      {/* --------------------------- */}
 
       <SafeAreaView className="flex-1">
-        {/* Buton inapoi */}
         <View className="px-5 mt-4">
           <TouchableOpacity
             onPress={() => router.back()}
@@ -163,9 +150,7 @@ export default function ForgotPasswordScreen() {
 
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1 justify-between"
-        >
-          {/* Logo */}
+          className="flex-1 justify-between">
           <View className="items-center" style={{ marginTop: height * 0.05 }}>
             <Image
               source={require("../assets/images/logo.png")} // Asigura-te ca calea e corecta
@@ -174,7 +159,6 @@ export default function ForgotPasswordScreen() {
             />
           </View>
 
-          {/* Container Formular (Glassmorphism) */}
           <View
             className="bg-white/25 rounded-t-[35px] px-8 pt-10 pb-10 justify-start backdrop-blur-sm"
             style={{ height: height * 0.55 }}
@@ -187,7 +171,6 @@ export default function ForgotPasswordScreen() {
               with your account.
             </Text>
 
-            {/* Input Email */}
             <View className="mb-8">
               <TextInput
                 className="bg-white rounded-xl h-14 px-4 text-base text-gray-800 shadow-sm"
@@ -201,7 +184,6 @@ export default function ForgotPasswordScreen() {
               />
             </View>
 
-            {/* Buton Trimite */}
             <TouchableOpacity
               className="bg-white h-14 rounded-xl justify-center items-center mb-6 shadow-md"
               onPress={handleReset}

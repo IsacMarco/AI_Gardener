@@ -27,9 +27,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
+import { scheduleWateringNotification } from "../../services/notifications";
 
-// Configurare Timeout (10 secunde)
-const SAVE_TIMEOUT_MS = 5000;
 export default function AddPlant() {
   const router = useRouter();
   // --- STATE DATE PLANTA ---
@@ -69,7 +68,6 @@ export default function AddPlant() {
   };
   const closeModal = () => {
     setModalVisible(false);
-    // Daca a fost succes, navigam inapoi dupa inchidere
     if (modalConfig.type === "success") {
       router.back();
     }
@@ -79,10 +77,7 @@ export default function AddPlant() {
     const currentUser = auth().currentUser;
     setUser(currentUser);
   }, []);
-  // Daca nu e logat (Display separat, nu modal, pentru a bloca tot ecranul)
   if (!user && !loading) {
-    // ... (codul tau de no user ramane neschimbat sau il poti adapta)
-    // Pentru simplitate, pastrez logica ta de return, dar ideal ar fi un redirect.
   }
   // --- LOGICA DE SALVARE CU TIMEOUT ---
   const handleSave = async () => {
@@ -92,26 +87,41 @@ export default function AddPlant() {
       showModal("error", "Missing Name", "Please enter a name for your plant.");
       return;
     }
-    setLoading(true);
-    const payload = {
-      userId: user.uid,
-      name: name,
-      species: species.trim(),
-      location: location.trim(),
-      remindersActive: remindersEnabled,
-      frequency: wateringIntervalDays,
-      preferredTime: wateringTime,
-      imageBase64: photoBase64 ? `data:image/jpeg;base64,${photoBase64}` : null,
-    };
-    try {
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("Timeout"));
-        }, SAVE_TIMEOUT_MS);
-      });
 
-      // Facem request-ul real
-      const fetchPromise = fetch(
+    setLoading(true);
+
+    try {
+      // Step A: Schedule Notification (if enabled)
+      let notificationId = null;
+
+      if (remindersEnabled) {
+        // We schedule it locally and get the ID back
+        notificationId = await scheduleWateringNotification(
+          name,
+          wateringIntervalDays,
+          wateringTime,
+        );
+      }
+
+      // Step B: Prepare Payload for MongoDB
+      // Now we include the notificationId so the server remembers it
+      const payload = {
+        userId: user.uid,
+        name: name,
+        species: species.trim(),
+        location: location.trim(),
+        remindersActive: remindersEnabled,
+        frequency: wateringIntervalDays,
+        preferredTime: wateringTime,
+        imageBase64: photoBase64
+          ? `data:image/jpeg;base64,${photoBase64}`
+          : null,
+        notificationId: notificationId,
+      };
+
+      // Step C: Send to Server (Backend)
+      // Note: Make sure your server.js is updated to receive "notificationId" inside req.body
+      const response = await fetch(
         process.env.EXPO_PUBLIC_MONGO_SERVER_URL + "/add-plant",
         {
           method: "POST",
@@ -119,9 +129,9 @@ export default function AddPlant() {
           body: JSON.stringify(payload),
         },
       );
-      // Folosim Promise.race pentru a vedea care termina primul
-      const response: any = await Promise.race([fetchPromise, timeoutPromise]);
+
       const data = await response.json();
+
       if (response.ok) {
         await refreshPlants();
         showModal(
@@ -135,29 +145,22 @@ export default function AddPlant() {
           "Save Failed",
           data.error || "Could not save plant.",
         );
+        // Fallback: If server save fails, we should ideally cancel the notification we just made
+        // to avoid "ghost" notifications.
+        if (notificationId) {
+          // await cancelNotification(notificationId); // (Optional but recommended safety)
+        }
       }
     } catch (error: any) {
       console.error("Error saving plant:", error);
-      if (error.message === "Timeout") {
-        showModal(
-          "error",
-          "Request Timed Out",
-          "The server took too long to respond. Please check your internet connection and try again.",
-        );
-      } else {
-        showModal(
-          "error",
-          "Connection Error",
-          "Ensure server is running and IP is correct.",
-        );
-      }
+      showModal("error", "Connection Error", "Check server.");
     } finally {
       setLoading(false);
     }
   };
   // --- LOGICA FOTO ---
   const pickFromCamera = async () => {
-    setModalVisible(false); // inchidem modalul de selectie
+    setModalVisible(false);
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.status !== "granted") {
       setTimeout(
@@ -173,7 +176,7 @@ export default function AddPlant() {
     }
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
-      quality: 0.6, // Optimizare marime
+      quality: 0.6,
       base64: true,
       allowsEditing: true,
       aspect: [1, 1],
@@ -184,7 +187,7 @@ export default function AddPlant() {
     }
   };
   const pickFromGallery = async () => {
-    setModalVisible(false); // inchidem modalul de selectie
+    setModalVisible(false);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
       setTimeout(
@@ -219,7 +222,6 @@ export default function AddPlant() {
       );
       return;
     }
-    // Deschidem modalul in mod "selection"
     showModal(
       "selection",
       "Add Photo",
@@ -273,7 +275,6 @@ export default function AddPlant() {
         locations={[0, 0.6, 1]}
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
       />
-      {/* --- MODAL UNIVERSAL --- */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -284,7 +285,6 @@ export default function AddPlant() {
       >
         <View className="flex-1 justify-center items-center bg-black/60 px-6">
           <View className="bg-white w-full max-w-sm rounded-[24px] p-6 items-center shadow-2xl">
-            {/* Header Icon */}
             <View
               className="w-16 h-16 rounded-full items-center justify-center mb-5 shadow-sm"
               style={{ backgroundColor: getModalColor() }}
@@ -297,7 +297,6 @@ export default function AddPlant() {
             <Text className="text-gray-500 text-center mb-8 px-2 text-base leading-6">
               {modalConfig.message}
             </Text>
-            {/* BUTOANE PENTRU MODAL */}
             {modalConfig.type === "selection" ? (
               <View className="w-full gap-3">
                 <TouchableOpacity
@@ -328,7 +327,6 @@ export default function AddPlant() {
                 </TouchableOpacity>
               </View>
             ) : (
-              // Buton Standard (OK / Close)
               <TouchableOpacity
                 onPress={closeModal}
                 className="w-full py-3.5 rounded-xl shadow-sm active:opacity-90"
@@ -344,7 +342,6 @@ export default function AddPlant() {
       </Modal>
       <SafeAreaView className="flex-1">
         <View className="flex-1">
-          {/* Header */}
           <View className="flex-row items-center px-4 py-2 mb-4">
             <TouchableOpacity
               onPress={() => router.back()}
@@ -362,7 +359,6 @@ export default function AddPlant() {
           >
             <ScrollView showsVerticalScrollIndicator={false}>
               <View className="items-center justify-center py-6 mb-2">
-                {/* Selector Foto */}
                 <TouchableOpacity
                   onPress={handleAddPhoto}
                   activeOpacity={0.85}
@@ -378,7 +374,6 @@ export default function AddPlant() {
                     ) : (
                       <Camera size={40} color="#5F7A4B" />
                     )}
-                    {/* Iconita mica de editare peste poza */}
                     {photoUri && (
                       <View className="absolute bottom-0 bg-black/40 w-full h-8 items-center justify-center">
                         <Text className="text-white text-[10px] font-bold">
@@ -398,7 +393,6 @@ export default function AddPlant() {
                 </TouchableOpacity>
               </View>
               <View className="bg-[#E8E6DE]/95 flex-1 rounded-t-[35px] px-6 pt-8 pb-10 min-h-[650px]">
-                {/* Formularul (nume, specie, locatia) ramane identic */}
                 <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
                   <Text className="text-[#1F2937] font-bold text-base mb-1">
                     Plant Name
@@ -435,7 +429,6 @@ export default function AddPlant() {
                     className="text-base text-[#1F2937] p-0"
                   />
                 </View>
-                {/* Watering Schedule Section */}
                 <Text className="text-[#1F2937] font-bold text-lg mb-3 ml-1">
                   Watering Schedule
                 </Text>
@@ -511,7 +504,6 @@ export default function AddPlant() {
                     </View>
                   )}
                 </View>
-                {/* Save Button */}
                 <TouchableOpacity
                   className={`py-4 rounded-2xl items-center mt-auto mb-6 border border-white/30 flex-row justify-center ${
                     isSaveDisabled

@@ -5,7 +5,6 @@ import auth, {
   signInWithCredential,
   signInWithEmailAndPassword,
 } from "@react-native-firebase/auth";
-// 2. IMPORT GOOGLE SIGN IN
 import {
   GoogleSignin,
   statusCodes,
@@ -32,7 +31,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
 
-// 3. CONFIGURARE INITIALA GOOGLE (Ruleaza o singura data)
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID,
 });
@@ -58,7 +56,6 @@ export default function LoginScreen() {
     try {
       await signInWithEmailAndPassword(auth(), email.trim(), password);
       setModalVisible(true);
-      // Rutarea se face automat din _layout.tsx, dar modalul arata succesul
     } catch (error: any) {
       console.error(error);
       setLogInStatus("error");
@@ -74,11 +71,9 @@ export default function LoginScreen() {
   const onGoogleButtonPress = async () => {
     setLogInStatus("loading");
     try {
-      // 1. Verifica daca exista Google Play Services pe telefon
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
-      // 2. Deschide fereastra de login Google si asteapta raspunsul
       const response = await GoogleSignin.signIn();
       const result: any = response;
       const idToken = result.data?.idToken || result.idToken;
@@ -228,7 +223,6 @@ export default function LoginScreen() {
         </SafeAreaView>
       </View>
 
-      {/* MODAL STATUS */}
       <Modal
         animationType="fade"
         transparent={true}

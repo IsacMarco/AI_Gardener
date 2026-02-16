@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import auth, { FirebaseAuthTypes, signOut } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+// 1. NEW IMPORT
+import * as Notifications from "expo-notifications";
 import {
   Bell,
   ChevronRight,
@@ -27,25 +29,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
-
-// --- COMPONENTE MICI PENTRU UI ---
-
-// 1. Card de Statistica (Gamification)
-const StatCard = ({
-  icon,
-  value,
-  label,
-}: {
-  icon: any;
-  value: string;
-  label: string;
-}) => (
-  <View className="items-center bg-white/20 p-3 rounded-2xl w-[30%] border border-white/20 backdrop-blur-md">
-    {icon}
-    <Text className="text-white font-bold text-lg mt-1 shadow-sm">{value}</Text>
-    <Text className="text-white/80 text-xs font-medium">{label}</Text>
-  </View>
-);
 
 // 2. Element de lista pentru Setari
 const SettingItem = ({
@@ -86,8 +69,6 @@ const SettingItem = ({
   </TouchableOpacity>
 );
 
-// --- ECRAN PRINCIPAL ---
-
 const AccountScreen = () => {
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -95,23 +76,23 @@ const AccountScreen = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
 
-  // Verificare User
   useEffect(() => {
     const currentUser = auth().currentUser;
     setUser(currentUser);
   }, []);
 
-  // Logout Logic
+  // --- UPDATED LOGOUT LOGIC ---
   const handleFirebaseLogout = async () => {
     try {
       setLogoutModalVisible(false);
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log("🔒 Notifications cleared for logout.");
       await signOut(auth());
+      router.replace("/");
     } catch (error) {
       console.error("Error signing out: ", error);
     }
   };
-
-  // Render daca nu e logat
   if (!user) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
@@ -137,7 +118,6 @@ const AccountScreen = () => {
     <View className="flex-1 bg-[#F2F1ED]">
       <StatusBar barStyle="light-content" />
 
-      {/* Background Gradient */}
       <LinearGradient
         colors={["#5F7A4B", "#8C8673", "#AFA696"]}
         locations={[0, 0.6, 1]}
@@ -151,7 +131,6 @@ const AccountScreen = () => {
       />
 
       <SafeAreaView className="flex-1">
-        {/* --- HEADER --- */}
         <View className="px-5 mt-2 mb-4">
           <View className="flex-row justify-between items-center mb-6">
             <TouchableOpacity
@@ -163,12 +142,9 @@ const AccountScreen = () => {
             <Text className="text-3xl font-bold text-white tracking-wide">
               Profile
             </Text>
-            <TouchableOpacity className="w-10 h-10 opacity-0">
-              {/* Spacer invizibil pt centrare */}
-            </TouchableOpacity>
+            <TouchableOpacity className="w-10 h-10 opacity-0"></TouchableOpacity>
           </View>
 
-          {/* User Info */}
           <View className="items-center">
             <View className="relative">
               <View className="w-28 h-28 bg-[#A4B58E] rounded-full items-center justify-center border-[3px] border-white/40 shadow-xl mb-4">
@@ -195,7 +171,6 @@ const AccountScreen = () => {
           </View>
         </View>
 
-        {/* --- SETTINGS CONTENT --- */}
         <View className="flex-1 bg-[#F2F1ED] rounded-t-[40px] shadow-2xl overflow-hidden mt-4">
           <ScrollView
             contentContainerStyle={{ padding: 24, paddingBottom: 50 }}
@@ -213,24 +188,11 @@ const AccountScreen = () => {
                 switchValue={notificationsEnabled}
                 onSwitch={() => setNotificationsEnabled(!notificationsEnabled)}
               />
-              {/* <SettingItem
-                icon={<Moon size={20} color="#6B7280" />}
-                label="Dark Mode"
-                isSwitch={true}
-                switchValue={darkModeEnabled}
-                onSwitch={() => setDarkModeEnabled(!darkModeEnabled)}
-              /> */}
               <SettingItem
                 icon={<Globe size={20} color="#3B82F6" />}
                 label="Language"
                 value="English"
               />
-              {/* <SettingItem
-                icon={<Thermometer size={20} color="#EF4444" />}
-                label="Units"
-                value="Celsius (°C)"
-                isLast={true}
-              /> */}
             </View>
             <Text className="text-gray-500 font-bold uppercase text-xs mb-3 ml-2 tracking-wider">
               Support
@@ -247,7 +209,6 @@ const AccountScreen = () => {
               />
             </View>
 
-            {/* LOGOUT BUTTON */}
             <TouchableOpacity
               onPress={() => setLogoutModalVisible(true)}
               className="flex-row items-center justify-center bg-white border border-red-100 p-4 rounded-2xl shadow-sm mb-6"
@@ -264,7 +225,6 @@ const AccountScreen = () => {
           </ScrollView>
         </View>
       </SafeAreaView>
-      {/* --- MODAL LOGOUT --- */}
       <Modal
         animationType="fade"
         transparent={true}

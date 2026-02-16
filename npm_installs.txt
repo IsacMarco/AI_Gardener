@@ -14,3 +14,4 @@ npm install @react-native-google-signin/google-signin
 npm install @react-native-firebase/firestore @react-native-firebase/storage
 npm install @google/generative-ai
 npx expo install expo-speech-recognition
+npx expo install expo-notifications expo-device expo-constants
