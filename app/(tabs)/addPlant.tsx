@@ -27,7 +27,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
-import { scheduleWateringNotification } from "../../services/notifications";
+import { scheduleWateringNotification, cancelNotification } from "../../services/notifications";
 
 export default function AddPlant() {
   const router = useRouter();
@@ -148,7 +148,7 @@ export default function AddPlant() {
         // Fallback: If server save fails, we should ideally cancel the notification we just made
         // to avoid "ghost" notifications.
         if (notificationId) {
-          // await cancelNotification(notificationId); // (Optional but recommended safety)
+          await cancelNotification(notificationId); // (Optional but recommended safety)
         }
       }
     } catch (error: any) {

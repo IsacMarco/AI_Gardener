@@ -93,6 +93,7 @@ app.delete("/plants/:id", async (req, res) => {
     const { id } = req.params;
     await Plant.findByIdAndDelete(id);
     res.status(200).json({ message: "Plant deleted" });
+    console.log(`✅ Plant with ID ${id} deleted`);
   } catch (error) {
     res.status(500).json({ error: "Could not delete plant" });
   }

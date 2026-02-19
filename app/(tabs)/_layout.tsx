@@ -111,6 +111,7 @@ export default function TabsLayout() {
         <Stack.Screen name="addPlant" />
         <Stack.Screen name="plantDetails" />
         <Stack.Screen name="editPlant" />
+        <Stack.Screen name="marketplace" />
       </Stack>
     </PlantProvider>
   );

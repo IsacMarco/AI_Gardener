@@ -1,8 +1,8 @@
 import PlantCard from "@/components/PlantCard";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Camera, Mic, Plus, Search, Sprout, User } from "lucide-react-native";
-import React from "react";
+import { Camera, Mic, Plus, RefreshCcw, Search, Sprout, User } from "lucide-react-native";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -16,9 +16,19 @@ import { usePlants } from "../../context/PlantContext";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { plants, loading } = usePlants();
+  const { plants, loading, refreshPlants } = usePlants();
+  const [refreshing, setRefreshing] = useState(false);
 
   const recentPlants = plants.slice(0, 4);
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await refreshPlants();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <View className="flex-1">
@@ -51,15 +61,30 @@ export default function HomeScreen() {
               <Text className="text-xl font-bold text-[#1F2937] mb-5 pl-1">
                 Your Garden at a Glance
               </Text>
-              {recentPlants.length > 0 && (
-                <Text
-                  className="text-md text-gray-600 mb-5 pl-1"
-                  style={{ alignSelf: "flex-end" }}
-                  onPress={() => router.push("/myPlants")}
+
+              <View className="flex-row items-center">
+                {recentPlants.length > 0 && (
+                  <Text
+                    className="text-md text-gray-600 mb-5 mr-3"
+                    onPress={() => router.push("/myPlants")}
+                  >
+                    see all
+                  </Text>
+                )}
+
+                <TouchableOpacity
+                  onPress={handleRefresh}
+                  disabled={refreshing}
+                  className="mb-5 p-2 rounded-full bg-[#5F7A4B]"
+                  activeOpacity={0.8}
                 >
-                  see all
-                </Text>
-              )}
+                  {refreshing ? (
+                    <ActivityIndicator size={18} color="#FFFFFF" />
+                  ) : (
+                    <RefreshCcw size={18} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View className="mb-6">
@@ -133,6 +158,16 @@ export default function HomeScreen() {
                   <Mic size={22} color="#5F7A4B" />
                 </View>
               </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/marketplace")}
+              activeOpacity={0.8}
+              className="bg-[#5F7A4B] flex-row items-center justify-between px-4 py-3.5 rounded-2xl shadow-sm mb-8"
+            >
+              <Text className="text-base text-white font-medium">
+                Explore Marketplace
+              </Text>
+              <Plus size={20} color="white" />
             </TouchableOpacity>
             <View className="mb-20">
               <View className="flex-row justify-between items-start">
