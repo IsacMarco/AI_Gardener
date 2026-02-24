@@ -1,4 +1,4 @@
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import auth, { FirebaseAuthTypes, onAuthStateChanged } from "@react-native-firebase/auth";
 import * as Notifications from "expo-notifications";
 import React, {
   createContext,
@@ -135,7 +135,7 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
   };
   // --- 3. AUTH LISTENER ---
   useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(async (userState) => {
+    const subscriber = onAuthStateChanged(auth(), async (userState) => {
       setUser(userState);
 
       if (userState) {

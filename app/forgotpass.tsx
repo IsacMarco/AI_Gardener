@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import auth from "@react-native-firebase/auth";
+import auth, { sendPasswordResetEmail } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -66,7 +66,7 @@ export default function ForgotPasswordScreen() {
     }
     setLoading(true);
     try {
-      await auth().sendPasswordResetEmail(email.trim());
+      await sendPasswordResetEmail(auth(), email.trim());
       showModal(
         "Check your Inbox",
         `We have sent a password recovery link to:\n${email}\n\nPlease check your spam folder too!`,

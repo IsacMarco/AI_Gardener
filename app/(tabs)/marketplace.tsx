@@ -353,7 +353,9 @@ export default function MarketplaceScreen() {
       setLocationDenied(false);
       setGpsDisabled(false);
 
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
 
       const nextRegion = {
         latitude: position.coords.latitude,
@@ -398,7 +400,9 @@ export default function MarketplaceScreen() {
       setGpsDisabled(false);
 
       // Now fetch current position and shops
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       const nextRegion = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -407,9 +411,15 @@ export default function MarketplaceScreen() {
       };
 
       setRegion(nextRegion);
-      setLastCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      setLastCoords({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
 
-      await loadNearbyShops({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      await loadNearbyShops({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
     } catch (error) {
       console.error("Refresh location error:", error);
     }
@@ -511,11 +521,18 @@ export default function MarketplaceScreen() {
             {activeTab === "shops" ? (
               <>
                 <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-xl font-bold text-[#1F2937]">Shops Nearby</Text>
+                  <Text className="text-xl font-bold text-[#1F2937]">
+                    Shops Nearby
+                  </Text>
                   {!locationDenied && !gpsDisabled && (
-                    <TouchableOpacity onPress={() => handleRefresh()} className="flex-row items-center bg-white/90 px-3 py-2 rounded-full">
+                    <TouchableOpacity
+                      onPress={() => handleRefresh()}
+                      className="flex-row items-center bg-white/90 px-3 py-2 rounded-full"
+                    >
                       <Ionicons name="refresh" size={16} color="#5F7A4B" />
-                      <Text className="ml-2 text-sm font-semibold text-[#5F7A4B]">Refresh</Text>
+                      <Text className="ml-2 text-sm font-semibold text-[#5F7A4B]">
+                        Refresh
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -526,7 +543,9 @@ export default function MarketplaceScreen() {
                       <Ionicons name="location" size={26} color="#5F7A4B" />
                     </View>
                     <Text className="text-base font-semibold text-[#1F2937] mb-2 text-center">
-                      {locationDenied ? "Location permission needed" : "Location services disabled"}
+                      {locationDenied
+                        ? "Location permission needed"
+                        : "Location services disabled"}
                     </Text>
                     <Text className="text-sm text-gray-500 text-center mb-4">
                       {locationDenied
@@ -538,13 +557,17 @@ export default function MarketplaceScreen() {
                         onPress={() => Linking.openSettings()}
                         className="bg-[#5F7A4B] px-5 py-2.5 rounded-full mr-3"
                       >
-                        <Text className="text-white font-semibold">Open Settings</Text>
+                        <Text className="text-white font-semibold">
+                          Open Settings
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleRefresh()}
                         className="bg-white/80 px-5 py-2.5 rounded-full border border-gray-200"
                       >
-                        <Text className="text-[#1F2937] font-semibold">Refresh</Text>
+                        <Text className="text-[#1F2937] font-semibold">
+                          Refresh
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -552,7 +575,7 @@ export default function MarketplaceScreen() {
                   <>
                     <View className="rounded-2xl overflow-hidden border border-white/60 shadow-sm mb-4">
                       <MapView
-                        style={{ height: 220, width: "100%" }}
+                        style={{ height: 240, width: "100%" }}
                         region={region}
                         showsUserLocation
                         showsMyLocationButton
@@ -657,13 +680,13 @@ export default function MarketplaceScreen() {
                                 onPress={() =>
                                   toggleCategoryExpanded(category.id)
                                 }
-                                className="bg-white/90 rounded-2xl px-4 py-3 shadow-sm flex-row items-center justify-between"
+                                className="bg-[#5F7A4B] border-[#5F7A4B] rounded-2xl px-4 py-3 shadow-sm flex-row items-center justify-between"
                               >
                                 <View>
-                                  <Text className="text-base font-semibold text-[#1F2937]">
+                                  <Text className="text-base font-semibold text-white">
                                     {category.label}
                                   </Text>
-                                  <Text className="text-xs text-gray-500 mt-1">
+                                  <Text className="text-xs text-white/75 mt-1">
                                     {resultCount} results
                                   </Text>
                                 </View>
@@ -672,7 +695,7 @@ export default function MarketplaceScreen() {
                                     isExpanded ? "chevron-up" : "chevron-down"
                                   }
                                   size={20}
-                                  color="#6B7280"
+                                  color="#FFFFFF"
                                 />
                               </TouchableOpacity>
 
@@ -687,7 +710,7 @@ export default function MarketplaceScreen() {
                                           setSelectedShop(shop);
                                           setMapModalVisible(true);
                                         }}
-                                        className="flex-row items-center justify-between bg-white/70 rounded-2xl px-4 py-3 mb-3 shadow-sm"
+                                        className="flex-row items-center justify-between bg-white rounded-2xl px-4 py-3 mb-3 shadow-sm"
                                       >
                                         <View className="flex-row items-center">
                                           <View className="w-10 h-10 rounded-full bg-[#5F7A4B]/15 items-center justify-center mr-3">
@@ -786,32 +809,58 @@ export default function MarketplaceScreen() {
         </View>
       </SafeAreaView>
 
-      <Modal transparent visible={modalVisible} animationType="fade" onRequestClose={() => setModalVisible(false)}>
+      <Modal
+        transparent
+        visible={modalVisible}
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
         <TouchableOpacity
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)" }}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
           className="justify-center items-center px-6"
         >
-          <TouchableOpacity activeOpacity={1} className="bg-white rounded-[32px] p-6 w-full max-w-sm items-center shadow-2xl">
+          <TouchableOpacity
+            activeOpacity={1}
+            className="bg-white rounded-[32px] p-6 w-full max-w-sm items-center shadow-2xl"
+          >
             <View className="w-16 h-16 bg-[#5F7A4B]/10 rounded-full items-center justify-center mb-4">
               <Leaf size={32} color="#5F7A4B" />
             </View>
 
-            <Text className="text-xl font-bold text-[#1F2937] mb-1 text-center">{modalTitle}</Text>
-            <Text className="text-gray-500 text-sm mb-6 font-medium text-center">{modalMessage}</Text>
+            <Text className="text-xl font-bold text-[#1F2937] mb-1 text-center">
+              {modalTitle}
+            </Text>
+            <Text className="text-gray-500 text-sm mb-6 font-medium text-center">
+              {modalMessage}
+            </Text>
 
             {isLocationModal ? (
               <View className="flex-row gap-3 w-full">
-                <TouchableOpacity onPress={() => Linking.openSettings()} className="flex-1 bg-white/80 py-3 rounded-xl items-center border border-gray-200">
-                  <Text className="text-[#1F2937] font-semibold">Open Settings</Text>
+                <TouchableOpacity
+                  onPress={() => Linking.openSettings()}
+                  className="flex-1 bg-white/80 py-3 rounded-xl items-center border border-gray-200"
+                >
+                  <Text className="text-[#1F2937] font-semibold">
+                    Open Settings
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => { setModalVisible(false); handleRefresh(); }} className="flex-1 bg-[#5F7A4B] py-3 rounded-xl items-center">
+                <TouchableOpacity
+                  onPress={() => {
+                    setModalVisible(false);
+                    handleRefresh();
+                  }}
+                  className="flex-1 bg-[#5F7A4B] py-3 rounded-xl items-center"
+                >
                   <Text className="text-white font-semibold">Refresh</Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              <TouchableOpacity onPress={() => setModalVisible(false)} className="mt-2 bg-[#5F7A4B] py-3 rounded-xl w-full items-center">
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                className="mt-2 bg-[#5F7A4B] py-3 rounded-xl w-full items-center"
+              >
                 <Text className="text-white font-semibold">OK</Text>
               </TouchableOpacity>
             )}
@@ -819,26 +868,48 @@ export default function MarketplaceScreen() {
         </TouchableOpacity>
       </Modal>
 
-      <Modal transparent visible={mapModalVisible} animationType="fade" onRequestClose={() => setMapModalVisible(false)}>
+      <Modal
+        transparent
+        visible={mapModalVisible}
+        animationType="fade"
+        onRequestClose={() => setMapModalVisible(false)}
+      >
         <TouchableOpacity
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)" }}
           activeOpacity={1}
           onPress={() => setMapModalVisible(false)}
           className="justify-center items-center px-6"
         >
-          <TouchableOpacity activeOpacity={1} className="bg-white rounded-[32px] p-6 w-full max-w-sm items-center shadow-2xl">
+          <TouchableOpacity
+            activeOpacity={1}
+            className="bg-white rounded-[32px] p-6 w-full max-w-sm items-center shadow-2xl"
+          >
             <View className="w-16 h-16 bg-[#5F7A4B]/10 rounded-full items-center justify-center mb-4">
               <MapPin size={32} color="#5F7A4B" />
             </View>
 
-            <Text className="text-xl font-bold text-[#1F2937] mb-1 text-center">Open in Maps?</Text>
-            <Text className="text-gray-500 text-sm mb-4 font-medium text-center">{selectedShop?.name || "Selected shop"}{"\n"}Do you want directions to this location?</Text>
+            <Text className="text-xl font-bold text-[#1F2937] mb-1 text-center">
+              Open in Maps?
+            </Text>
+            <Text className="text-gray-500 text-sm mb-4 font-medium text-center">
+              {selectedShop?.name || "Selected shop"}
+              {"\n"}Do you want directions to this location?
+            </Text>
 
             <View className="flex-row gap-3 w-full">
-              <TouchableOpacity onPress={() => setMapModalVisible(false)} className="flex-1 bg-white/80 py-3 rounded-xl items-center border border-gray-200">
+              <TouchableOpacity
+                onPress={() => setMapModalVisible(false)}
+                className="flex-1 bg-white/80 py-3 rounded-xl items-center border border-gray-200"
+              >
                 <Text className="text-[#1F2937] font-semibold">Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setMapModalVisible(false); openMapsDirections(); }} className="flex-1 bg-[#5F7A4B] py-3 rounded-xl items-center">
+              <TouchableOpacity
+                onPress={() => {
+                  setMapModalVisible(false);
+                  openMapsDirections();
+                }}
+                className="flex-1 bg-[#5F7A4B] py-3 rounded-xl items-center"
+              >
                 <Text className="text-white font-semibold">Open Maps</Text>
               </TouchableOpacity>
             </View>

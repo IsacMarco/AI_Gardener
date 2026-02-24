@@ -27,7 +27,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
-import { scheduleWateringNotification, cancelNotification } from "../../services/notifications";
+import {
+  scheduleWateringNotification,
+  cancelNotification,
+} from "../../services/notifications";
 
 export default function AddPlant() {
   const router = useRouter();
