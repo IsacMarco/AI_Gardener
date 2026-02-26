@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { MapPin, Search, ShoppingBag, Star, Leaf } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -38,34 +38,75 @@ type NearbyShop = {
     longitude: number;
   };
   distanceKm?: number | null;
+  relevanceScore?: number;
+  categoryIds?: string[]; // NEW: ca să putem filtra corect per categorie
+};
+
+type CategoryRule = {
+  key: string;
+  values: string[];
+  weight: number;
 };
 
 type ShopCategory = {
   id: string;
   label: string;
-  keyword: string;
+  keyword?: string;
+  include: CategoryRule[];
+  exclude?: CategoryRule[];
+};
+
+type OSMElement = {
+  id: number;
+  type: "node" | "way" | "relation";
+  lat?: number;
+  lon?: number;
+  center?: {
+    lat: number;
+    lon: number;
+  };
+  tags?: Record<string, string>;
+};
+
+type OverpassResponse = {
+  elements?: OSMElement[];
 };
 
 const SHOP_CATEGORIES: ShopCategory[] = [
   {
     id: "plants",
     label: "Plant Shops",
-    keyword: "garden center nursery plant shop florist greenhouse",
+    include: [
+      { key: "shop", values: ["garden_centre", "florist", "plant_nursery"], weight: 6 },
+      { key: "landuse", values: ["plant_nursery"], weight: 3 },
+    ],
+    exclude: [{ key: "amenity", values: ["grave_yard"], weight: 10 }],
   },
   {
     id: "tools",
     label: "Garden Tools",
-    keyword: "garden tools hardware lawn mower pruning shears",
+    include: [
+      { key: "shop", values: ["hardware", "doityourself", "tools"], weight: 6 },
+      { key: "shop", values: ["trade", "rental"], weight: 3 },
+    ],
   },
   {
     id: "care",
     label: "Plant Care",
-    keyword: "fertilizer soil compost irrigation pesticides",
+    include: [
+      { key: "shop", values: ["agrarian", "farm"], weight: 6 },
+      { key: "product", values: ["fertilizer", "pesticide"], weight: 4 },
+    ],
   },
   {
     id: "landscaping",
     label: "Landscaping",
-    keyword: "landscaping garden design outdoor living",
+    include: [
+      { key: "craft", values: ["gardener", "landscaper", "tree_surgeon"], weight: 7 },
+      { key: "office", values: ["landscape_architect"], weight: 5 },
+      { key: "service", values: ["landscaper", "gardener"], weight: 6 },
+      { key: "trade", values: ["landscaping", "horticulture"], weight: 6 },
+    ],
   },
 ];
 
@@ -104,6 +145,18 @@ const PRODUCTS = [
   },
 ];
 
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+const CATEGORY_CONFIDENCE_THRESHOLD = 5;
+const GLOBAL_CONFIDENCE_THRESHOLD = 7;
+const MIN_STRICT_RESULTS = 4;
+const LANDSCAPING_CONFIDENCE_THRESHOLD = 6;
+const OSM_REQUEST_TIMEOUT_MS = 9000;
+const OSM_CACHE_TTL_MS = 5 * 60 * 1000;
+
 export default function MarketplaceScreen() {
   const router = useRouter();
   const [region, setRegion] = useState(DEFAULT_REGION);
@@ -128,6 +181,9 @@ export default function MarketplaceScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
+  const [searchErrorMessage, setSearchErrorMessage] = useState<string | null>(
+    null,
+  );
   const [radiusMeters, setRadiusMeters] = useState(RADIUS_OPTIONS[1]);
   const [lastCoords, setLastCoords] = useState<{
     latitude: number;
@@ -137,18 +193,17 @@ export default function MarketplaceScreen() {
   const [activeTab, setActiveTab] = useState<"shops" | "products">("shops");
   const [locationDenied, setLocationDenied] = useState(false);
   const [gpsDisabled, setGpsDisabled] = useState(false); // New state added
-  const [expandedCategories, setExpandedCategories] = useState<
-    Record<string, boolean>
-  >(() =>
-    SHOP_CATEGORIES.reduce<Record<string, boolean>>((acc, category) => {
-      acc[category.id] = false;
-      return acc;
-    }, {}),
+  const [selectedResultCategoryId, setSelectedResultCategoryId] = useState(
+    SHOP_CATEGORIES[0].id,
   );
   const [selectedShop, setSelectedShop] = useState<NearbyShop | null>(null);
   const [mapModalVisible, setMapModalVisible] = useState(false);
-
-  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const [sortMode, setSortMode] = useState<"relevance" | "distance">(
+    "relevance",
+  );
+  const osmCacheRef = useRef<Map<string, { timestamp: number; elements: OSMElement[] }>>(
+    new Map(),
+  );
 
   const getDistanceKm = (
     from: { latitude: number; longitude: number },
@@ -213,11 +268,21 @@ export default function MarketplaceScreen() {
     }));
   };
 
-  const toggleCategoryExpanded = (categoryId: string) => {
-    setExpandedCategories((prev) => ({
-      ...prev,
-      [categoryId]: !prev[categoryId],
-    }));
+  const getSortedCategoryShops = (categoryId: string) => {
+    const categoryShops = [...(shopsByCategory[categoryId] || [])];
+
+    if (sortMode === "distance") {
+      return categoryShops.sort((first, second) => {
+        const firstDistance = first.distanceKm ?? Number.MAX_VALUE;
+        const secondDistance = second.distanceKm ?? Number.MAX_VALUE;
+        return firstDistance - secondDistance;
+      });
+    }
+
+    return categoryShops.sort(
+      (first, second) =>
+        (second.relevanceScore ?? 0) - (first.relevanceScore ?? 0),
+    );
   };
 
   const openMapsDirections = async () => {
@@ -236,98 +301,435 @@ export default function MarketplaceScreen() {
     }
   };
 
-  const fetchCategoryShops = async (
-    coords: { latitude: number; longitude: number },
+  const getElementCoords = (element: OSMElement) => {
+    if (element.lat != null && element.lon != null) {
+      return { latitude: element.lat, longitude: element.lon };
+    }
+    if (element.center?.lat != null && element.center?.lon != null) {
+      return {
+        latitude: element.center.lat,
+        longitude: element.center.lon,
+      };
+    }
+    return null;
+  };
+
+  const getTagTokens = (tags: Record<string, string>, key: string) => {
+    const raw = tags[key];
+    if (!raw) {
+      return [] as string[];
+    }
+    return raw
+      .toLowerCase()
+      .split(";")
+      .map((token) => token.trim())
+      .filter(Boolean);
+  };
+
+  const matchesRule = (
+    tags: Record<string, string>,
+    rule: CategoryRule,
+  ) => {
+    const tokens = getTagTokens(tags, rule.key);
+    if (tokens.length === 0) {
+      return false;
+    }
+    return rule.values.some((value) => tokens.includes(value.toLowerCase()));
+  };
+
+  const computeCategoryScore = (
     category: ShopCategory,
+    tags: Record<string, string>,
+  ) => {
+    const includeScore = category.include.reduce((score, rule) => {
+      return matchesRule(tags, rule) ? score + rule.weight : score;
+    }, 0);
+
+    const excludePenalty = (category.exclude || []).reduce((score, rule) => {
+      return matchesRule(tags, rule) ? score + rule.weight : score;
+    }, 0);
+
+    return includeScore - excludePenalty;
+  };
+
+  const getBusinessSignalsScore = (tags: Record<string, string>) => {
+    let score = 0;
+
+    if (tags.name) score += 2;
+    if (tags.brand || tags.operator) score += 2;
+    if (tags.website || tags["contact:website"]) score += 1;
+    if (tags.phone || tags["contact:phone"]) score += 1;
+    if (tags.opening_hours) score += 1;
+
+    return score;
+  };
+
+  const hasLifecycleClosedTag = (tags: Record<string, string>) => {
+    const lifecycleKeys = [
+      "disused",
+      "abandoned",
+      "demolished",
+      "razed",
+      "removed",
+      "construction",
+      "proposed",
+    ];
+
+    if (
+      lifecycleKeys.some((key) => {
+        const value = (tags[key] || "").toLowerCase();
+        return value === "yes" || value === "true";
+      })
+    ) {
+      return true;
+    }
+
+    if (
+      Object.keys(tags).some(
+        (key) =>
+          key.startsWith("disused:") ||
+          key.startsWith("abandoned:") ||
+          key.startsWith("demolished:"),
+      )
+    ) {
+      return true;
+    }
+
+    const openingHours = (tags.opening_hours || "").toLowerCase();
+    if (["closed", "off", "unknown"].includes(openingHours)) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const isLikelyResidentialOrPrivate = (tags: Record<string, string>) => {
+    const access = (tags.access || "").toLowerCase();
+    const building = (tags.building || "").toLowerCase();
+    const landuse = (tags.landuse || "").toLowerCase();
+    const hasBusinessTag = Boolean(tags.shop || tags.craft || tags.office || tags.service || tags.trade);
+
+    if (["private", "no"].includes(access) && !hasBusinessTag) {
+      return true;
+    }
+
+    if (
+      ["house", "residential", "apartments", "detached", "hut"].includes(
+        building,
+      ) &&
+      !hasBusinessTag
+    ) {
+      return true;
+    }
+
+    if (landuse === "residential" && !tags.shop && !tags.craft && !tags.amenity) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const getBusinessDisplayName = (tags: Record<string, string>) => {
+    const candidates = [
+      tags.name,
+      tags["name:en"],
+      tags.official_name,
+      tags.short_name,
+      tags.brand,
+      tags.operator,
+    ];
+    const found = candidates.find((value) => value && value.trim().length > 1);
+    return found?.trim() || null;
+  };
+
+  const classifyElementByCategory = (
+    element: OSMElement,
+    distanceKm: number,
+  ) => {
+    const tags = element.tags || {};
+
+    if (hasLifecycleClosedTag(tags) || isLikelyResidentialOrPrivate(tags)) {
+      return [] as Array<{ categoryId: string; score: number }>;
+    }
+
+    const businessSignalsScore = getBusinessSignalsScore(tags);
+    const distancePenalty = Math.min(distanceKm, 20) * 0.25;
+    const matches: Array<{ categoryId: string; score: number }> = [];
+
+    const hasBusinessIdentity = Boolean(getBusinessDisplayName(tags));
+    const hasContactSignals =
+      Boolean(tags.website || tags["contact:website"]) ||
+      Boolean(tags.phone || tags["contact:phone"]) ||
+      Boolean(tags.opening_hours);
+
+    if (!hasBusinessIdentity && !hasContactSignals) {
+      return matches;
+    }
+
+    SHOP_CATEGORIES.forEach((category) => {
+      const categoryScore = computeCategoryScore(category, tags);
+      const categoryThreshold =
+        category.id === "landscaping"
+          ? LANDSCAPING_CONFIDENCE_THRESHOLD
+          : CATEGORY_CONFIDENCE_THRESHOLD;
+
+      if (categoryScore < categoryThreshold) {
+        return;
+      }
+
+      const isOfficeOnlyLandscaping =
+        category.id === "landscaping" &&
+        Boolean(tags.office) &&
+        !tags.shop &&
+        !tags.craft;
+
+      if (isOfficeOnlyLandscaping && !hasContactSignals) {
+        return;
+      }
+
+      const finalScore = categoryScore + businessSignalsScore - distancePenalty;
+      if (finalScore >= GLOBAL_CONFIDENCE_THRESHOLD) {
+        matches.push({ categoryId: category.id, score: finalScore });
+      }
+    });
+
+    return matches;
+  };
+
+  const buildStrictQuery = (
+    coords: { latitude: number; longitude: number },
     searchRadius: number,
   ) => {
-    if (!apiKey) {
-      throw new Error("Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY.");
-    }
+    const clauses: string[] = [];
 
-    const keywordParam = encodeURIComponent(category.keyword);
-    const url =
-      "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
-      `?location=${coords.latitude},${coords.longitude}` +
-      `&radius=${searchRadius}` +
-      "&type=store" +
-      `&keyword=${keywordParam}` +
-      `&key=${apiKey}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status === "ZERO_RESULTS") {
-      return [];
-    }
-
-    if (data.status !== "OK") {
-      throw new Error(
-        data.error_message || `Places API status: ${data.status}`,
-      );
-    }
-
-    return data.results.map((item: any) => {
-      const distanceKm = getDistanceKm(coords, {
-        latitude: item.geometry.location.lat,
-        longitude: item.geometry.location.lng,
+    SHOP_CATEGORIES.forEach((category) => {
+      category.include.forEach((rule) => {
+        rule.values.forEach((value) => {
+          clauses.push(
+            `node(around:${searchRadius},${coords.latitude},${coords.longitude})[${rule.key}="${value}"];`,
+          );
+          clauses.push(
+            `way(around:${searchRadius},${coords.latitude},${coords.longitude})[${rule.key}="${value}"];`,
+          );
+        });
       });
-
-      return {
-        id: item.place_id,
-        name: item.name,
-        rating: item.rating ?? null,
-        vicinity: item.vicinity ?? null,
-        location: {
-          latitude: item.geometry.location.lat,
-          longitude: item.geometry.location.lng,
-        },
-        distanceKm,
-      } as NearbyShop;
     });
+
+    return `
+[out:json][timeout:25];
+(
+  ${clauses.join("\n  ")}
+);
+out center tags;
+`;
+  };
+
+  const buildBroadQuery = (
+    coords: { latitude: number; longitude: number },
+    searchRadius: number,
+  ) => {
+    return `
+[out:json][timeout:25];
+(
+  node(around:${searchRadius},${coords.latitude},${coords.longitude})[shop~"garden_centre|florist|hardware|doityourself|agrarian|farm|trade|tools|supermarket"];
+  way(around:${searchRadius},${coords.latitude},${coords.longitude})[shop~"garden_centre|florist|hardware|doityourself|agrarian|farm|trade|tools|supermarket"];
+  relation(around:${searchRadius},${coords.latitude},${coords.longitude})[shop~"garden_centre|florist|hardware|doityourself|agrarian|farm|trade|tools|supermarket"];
+  node(around:${searchRadius},${coords.latitude},${coords.longitude})[amenity~"marketplace|garden_centre"];
+  way(around:${searchRadius},${coords.latitude},${coords.longitude})[amenity~"marketplace|garden_centre"];
+  relation(around:${searchRadius},${coords.latitude},${coords.longitude})[amenity~"marketplace|garden_centre"];
+  node(around:${searchRadius},${coords.latitude},${coords.longitude})[craft~"gardener|landscaper"];
+  way(around:${searchRadius},${coords.latitude},${coords.longitude})[craft~"gardener|landscaper"];
+  relation(around:${searchRadius},${coords.latitude},${coords.longitude})[craft~"gardener|landscaper"];
+  node(around:${searchRadius},${coords.latitude},${coords.longitude})[service~"landscaper|gardener"];
+  way(around:${searchRadius},${coords.latitude},${coords.longitude})[service~"landscaper|gardener"];
+  relation(around:${searchRadius},${coords.latitude},${coords.longitude})[service~"landscaper|gardener"];
+  node(around:${searchRadius},${coords.latitude},${coords.longitude})[trade~"landscaping|horticulture"];
+  way(around:${searchRadius},${coords.latitude},${coords.longitude})[trade~"landscaping|horticulture"];
+  relation(around:${searchRadius},${coords.latitude},${coords.longitude})[trade~"landscaping|horticulture"];
+  node(around:${searchRadius},${coords.latitude},${coords.longitude})[office="landscape_architect"];
+  way(around:${searchRadius},${coords.latitude},${coords.longitude})[office="landscape_architect"];
+  relation(around:${searchRadius},${coords.latitude},${coords.longitude})[office="landscape_architect"];
+);
+out center tags;
+`;
+  };
+
+  const fetchNearbyShopsFromOsm = async (
+    coords: { latitude: number; longitude: number },
+    searchRadius: number,
+  ) => {
+    const cacheKey = `${coords.latitude.toFixed(3)}:${coords.longitude.toFixed(3)}:${searchRadius}`;
+    const cached = osmCacheRef.current.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < OSM_CACHE_TTL_MS) {
+      return cached.elements;
+    }
+
+    const fetchEndpointWithTimeout = async (endpoint: string, query: string) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), OSM_REQUEST_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain",
+          },
+          body: query,
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Overpass request failed (${endpoint}): ${response.status}`);
+        }
+
+        const data = (await response.json()) as OverpassResponse;
+        return data.elements || [];
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+
+    const runQueryWithFallback = async (query: string) => {
+      let remaining = OVERPASS_ENDPOINTS.length;
+      let settled = false;
+      let lastError: unknown = null;
+
+      return new Promise<OSMElement[]>((resolve, reject) => {
+        OVERPASS_ENDPOINTS.forEach((endpoint) => {
+          fetchEndpointWithTimeout(endpoint, query)
+            .then((elements) => {
+              if (settled) {
+                return;
+              }
+              settled = true;
+              resolve(elements);
+            })
+            .catch((error) => {
+              lastError = error;
+              remaining -= 1;
+              if (remaining === 0 && !settled) {
+                reject(lastError || new Error("All Overpass endpoints failed."));
+              }
+            });
+        });
+      });
+    };
+
+    const strictResults = await runQueryWithFallback(
+      buildStrictQuery(coords, searchRadius),
+    );
+
+    if (strictResults.length >= MIN_STRICT_RESULTS) {
+      osmCacheRef.current.set(cacheKey, {
+        timestamp: Date.now(),
+        elements: strictResults,
+      });
+      return strictResults;
+    }
+
+    const broadResults = await runQueryWithFallback(
+      buildBroadQuery(coords, searchRadius),
+    );
+
+    const mergedById = new Map<string, OSMElement>();
+    [...strictResults, ...broadResults].forEach((element) => {
+      mergedById.set(`${element.type}-${element.id}`, element);
+    });
+
+    const merged = Array.from(mergedById.values());
+    osmCacheRef.current.set(cacheKey, {
+      timestamp: Date.now(),
+      elements: merged,
+    });
+    return merged;
   };
 
   const loadNearbyShops = async (coords: {
     latitude: number;
     longitude: number;
   }) => {
-    if (!apiKey) {
-      console.error("Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY.");
-      showErrorModal(
-        "Maps key missing",
-        "Set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to load nearby shops.",
-      );
-      return;
-    }
-
     setLoadingShops(true);
+    setSearchErrorMessage(null);
     try {
       setNoResults(false);
-      const results = await Promise.allSettled(
-        SHOP_CATEGORIES.map((category) =>
-          fetchCategoryShops(coords, category, MAX_RADIUS),
-        ),
+      const elements = await fetchNearbyShopsFromOsm(coords, MAX_RADIUS);
+
+      const nextByCategory = SHOP_CATEGORIES.reduce<Record<string, NearbyShop[]>>(
+        (acc, category) => {
+          acc[category.id] = [];
+          return acc;
+        },
+        {},
       );
 
-      const nextByCategory: Record<string, NearbyShop[]> = {};
+      const perCategoryIds = SHOP_CATEGORIES.reduce<Record<string, Set<string>>>(
+        (acc, category) => {
+          acc[category.id] = new Set<string>();
+          return acc;
+        },
+        {},
+      );
 
-      results.forEach((result, index) => {
-        const category = SHOP_CATEGORIES[index];
-        if (result.status === "fulfilled") {
-          nextByCategory[category.id] = result.value;
-        } else {
-          console.error(`Places API error (${category.label}):`, result.reason);
-          nextByCategory[category.id] = [];
+      elements.forEach((element) => {
+        const tags = element.tags || {};
+        const displayName = getBusinessDisplayName(tags);
+        if (!displayName) {
+          return;
         }
+
+        const location = getElementCoords(element);
+
+        if (!location) {
+          return;
+        }
+
+        const distanceKm = getDistanceKm(coords, location);
+        const categoryMatches = classifyElementByCategory(element, distanceKm);
+
+        if (categoryMatches.length === 0) {
+          return;
+        }
+
+        const vicinity =
+          element.tags?.["addr:street"] ||
+          element.tags?.["addr:city"] ||
+          element.tags?.["addr:suburb"] ||
+          null;
+
+        const baseShop: NearbyShop = {
+          id: `${element.type}-${element.id}`,
+          name: displayName,
+          rating: null,
+          vicinity,
+          location,
+          distanceKm,
+        };
+
+        categoryMatches.forEach(({ categoryId, score }) => {
+          if (!perCategoryIds[categoryId].has(baseShop.id)) {
+            perCategoryIds[categoryId].add(baseShop.id);
+            nextByCategory[categoryId].push({
+              ...baseShop,
+              relevanceScore: score,
+            });
+          }
+        });
+      });
+
+      Object.keys(nextByCategory).forEach((categoryId) => {
+        nextByCategory[categoryId].sort(
+          (first, second) =>
+            (second.relevanceScore || 0) - (first.relevanceScore || 0),
+        );
       });
 
       setAllShopsByCategory(nextByCategory);
       applyRadiusFilter(nextByCategory, radiusMeters);
+      setSearchErrorMessage(null);
     } catch (error) {
-      console.error("Nearby shops error:", error);
-      showErrorModal(
-        "Network error",
-        "Unable to load nearby shops. Try again later.",
+      console.error("Nearby shops (OSM) error:", error);
+      setSearchErrorMessage(
+        "We couldn't load nearby shops right now. Please try refreshing in a few moments.",
       );
     } finally {
       setLoadingShops(false);
@@ -346,7 +748,7 @@ export default function MarketplaceScreen() {
 
       const servicesEnabled = await Location.hasServicesEnabledAsync();
       if (!servicesEnabled) {
-        console.warn("Location services are disabled.");
+        console.warn("Location services are disabled :(");
         setGpsDisabled(true);
         return;
       }
@@ -443,6 +845,46 @@ export default function MarketplaceScreen() {
       applyRadiusFilter(allShopsByCategory, radiusMeters);
     }
   }, [radiusMeters, allShopsByCategory, activeCategories]);
+
+  useEffect(() => {
+    const activeCategoryIds = SHOP_CATEGORIES.filter(
+      (category) => activeCategories[category.id],
+    ).map((category) => category.id);
+
+    if (activeCategoryIds.length === 0) {
+      return;
+    }
+
+    const hasCurrent = activeCategoryIds.includes(selectedResultCategoryId);
+    if (hasCurrent) {
+      return;
+    }
+
+    const firstWithResults = activeCategoryIds.find(
+      (categoryId) => (shopsByCategory[categoryId]?.length ?? 0) > 0,
+    );
+    setSelectedResultCategoryId(firstWithResults || activeCategoryIds[0]);
+  }, [activeCategories, shopsByCategory, selectedResultCategoryId]);
+
+  const activeCategoryCount = SHOP_CATEGORIES.filter(
+    (category) => activeCategories[category.id],
+  ).length;
+  const activeResultCategories = SHOP_CATEGORIES.filter(
+    (category) => activeCategories[category.id],
+  );
+  const selectedResultCategory =
+    activeResultCategories.find(
+      (category) => category.id === selectedResultCategoryId,
+    ) || activeResultCategories[0] || null;
+  const selectedCategoryResults = selectedResultCategory
+    ? getSortedCategoryShops(selectedResultCategory.id)
+    : [];
+  const totalFilteredResults = SHOP_CATEGORIES.reduce((total, category) => {
+    if (!activeCategories[category.id]) {
+      return total;
+    }
+    return total + (shopsByCategory[category.id]?.length ?? 0);
+  }, 0);
 
   return (
     <View className="flex-1">
@@ -584,6 +1026,28 @@ export default function MarketplaceScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
+                ) : searchErrorMessage ? (
+                  <View className="bg-white/90 rounded-2xl p-6 items-center shadow-sm">
+                    <View className="w-14 h-14 rounded-full bg-[#5F7A4B]/10 items-center justify-center mb-3">
+                      <Ionicons
+                        name="alert-circle-outline"
+                        size={26}
+                        color="#5F7A4B"
+                      />
+                    </View>
+                    <Text className="text-base font-semibold text-[#1F2937] mb-2 text-center">
+                      Unable to load nearby shops
+                    </Text>
+                    <Text className="text-sm text-gray-500 text-center mb-4">
+                      {searchErrorMessage}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleRefresh()}
+                      className="bg-[#5F7A4B] px-5 py-2.5 rounded-full"
+                    >
+                      <Text className="text-white font-semibold">Refresh</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   <>
                     <View className="rounded-2xl overflow-hidden border border-white/60 shadow-sm mb-4">
@@ -665,6 +1129,50 @@ export default function MarketplaceScreen() {
                     </View>
 
                     <View className="mb-8">
+                      <View className="bg-white/90 rounded-2xl px-4 py-3 mb-4 border border-white/70">
+                        <Text className="text-sm font-semibold text-[#1F2937]">
+                          {totalFilteredResults} results • {activeCategoryCount} categories • {radiusMeters / 1000} km
+                        </Text>
+                        <View className="flex-row mt-3">
+                          <TouchableOpacity
+                            onPress={() => setSortMode("relevance")}
+                            className={`px-3 py-1.5 rounded-full mr-2 border ${
+                              sortMode === "relevance"
+                                ? "bg-[#5F7A4B] border-[#5F7A4B]"
+                                : "bg-white border-gray-200"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                sortMode === "relevance"
+                                  ? "text-white"
+                                  : "text-[#1F2937]"
+                              }`}
+                            >
+                              Relevance
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => setSortMode("distance")}
+                            className={`px-3 py-1.5 rounded-full border ${
+                              sortMode === "distance"
+                                ? "bg-[#5F7A4B] border-[#5F7A4B]"
+                                : "bg-white border-gray-200"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                sortMode === "distance"
+                                  ? "text-white"
+                                  : "text-[#1F2937]"
+                              }`}
+                            >
+                              Distance
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
                       {loadingShops ? (
                         <View className="items-center py-6">
                           <ActivityIndicator size="small" color="#5F7A4B" />
@@ -681,86 +1189,100 @@ export default function MarketplaceScreen() {
                           </Text>
                         </View>
                       ) : (
-                        SHOP_CATEGORIES.filter(
-                          (category) => activeCategories[category.id],
-                        ).map((category) => {
-                          const isExpanded = expandedCategories[category.id];
-                          const resultCount =
-                            shopsByCategory[category.id]?.length ?? 0;
-                          return (
-                            <View key={category.id} className="mb-4">
-                              <TouchableOpacity
-                                onPress={() =>
-                                  toggleCategoryExpanded(category.id)
-                                }
-                                className="bg-[#5F7A4B] border-[#5F7A4B] rounded-2xl px-4 py-3 shadow-sm flex-row items-center justify-between"
-                              >
-                                <View>
-                                  <Text className="text-base font-semibold text-white">
-                                    {category.label}
-                                  </Text>
-                                  <Text className="text-xs text-white/75 mt-1">
-                                    {resultCount} results
-                                  </Text>
-                                </View>
-                                <Ionicons
-                                  name={
-                                    isExpanded ? "chevron-up" : "chevron-down"
+                        <>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingRight: 8 }}
+                            className="mb-4"
+                          >
+                            {activeResultCategories.map((category) => {
+                              const isSelected =
+                                selectedResultCategory?.id === category.id;
+                              const count = shopsByCategory[category.id]?.length ?? 0;
+                              return (
+                                <TouchableOpacity
+                                  key={category.id}
+                                  onPress={() =>
+                                    setSelectedResultCategoryId(category.id)
                                   }
-                                  size={20}
-                                  color="#FFFFFF"
-                                />
-                              </TouchableOpacity>
+                                  className={`mr-2 px-4 py-2 rounded-full border ${
+                                    isSelected
+                                      ? "bg-[#5F7A4B] border-[#5F7A4B]"
+                                      : "bg-white border-white/70"
+                                  }`}
+                                >
+                                  <Text
+                                    className={`text-xs font-semibold ${
+                                      isSelected ? "text-white" : "text-[#1F2937]"
+                                    }`}
+                                  >
+                                    {category.label} ({count})
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
 
-                              {isExpanded && resultCount > 0 && (
-                                <View className="mt-3">
-                                  {(shopsByCategory[category.id] || [])
-                                    .slice(0, 6)
-                                    .map((shop: NearbyShop) => (
-                                      <TouchableOpacity
-                                        key={shop.id}
-                                        onPress={() => {
-                                          setSelectedShop(shop);
-                                          setMapModalVisible(true);
-                                        }}
-                                        className="flex-row items-center justify-between bg-white rounded-2xl px-4 py-3 mb-3 shadow-sm"
-                                      >
-                                        <View className="flex-row items-center">
-                                          <View className="w-10 h-10 rounded-full bg-[#5F7A4B]/15 items-center justify-center mr-3">
-                                            <ShoppingBag
-                                              size={20}
-                                              color="#5F7A4B"
-                                            />
-                                          </View>
-                                          <View>
-                                            <Text className="text-base font-semibold text-[#1F2937]">
-                                              {shop.name}
-                                            </Text>
-                                            <Text className="text-sm text-gray-500">
-                                              {shop.vicinity || "Nearby"}
-                                            </Text>
-                                          </View>
-                                        </View>
-                                        <View className="items-end">
-                                          <View className="flex-row items-center">
-                                            <Star size={14} color="#F59E0B" />
-                                            <Text className="ml-1 text-sm text-[#1F2937]">
-                                              {shop.rating?.toFixed(1) ?? "-"}
-                                            </Text>
-                                          </View>
-                                          {shop.distanceKm ? (
-                                            <Text className="text-xs text-gray-500 mt-1">
-                                              {shop.distanceKm.toFixed(1)} km
-                                            </Text>
-                                          ) : null}
-                                        </View>
-                                      </TouchableOpacity>
-                                    ))}
+                          {selectedResultCategory ? (
+                            <View>
+                              <Text className="text-xs text-gray-500 mb-2 px-1">
+                                {selectedResultCategory.label} • showing all {selectedCategoryResults.length} results • sorted by {sortMode}
+                              </Text>
+                              {selectedCategoryResults.length === 0 ? (
+                                <View className="bg-white/90 rounded-2xl p-4">
+                                  <Text className="text-sm text-gray-500 text-center">
+                                    No results in this category for current filters.
+                                  </Text>
                                 </View>
+                              ) : (
+                                selectedCategoryResults.map((shop: NearbyShop) => (
+                                  <TouchableOpacity
+                                    key={shop.id}
+                                    onPress={() => {
+                                      setSelectedShop(shop);
+                                      setMapModalVisible(true);
+                                    }}
+                                    className="flex-row items-center justify-between bg-white rounded-2xl px-4 py-3 mb-3 shadow-sm"
+                                  >
+                                    <View className="flex-row items-center">
+                                      <View className="w-10 h-10 rounded-full bg-[#5F7A4B]/15 items-center justify-center mr-3">
+                                        <ShoppingBag size={20} color="#5F7A4B" />
+                                      </View>
+                                      <View>
+                                        <Text className="text-base font-semibold text-[#1F2937]">
+                                          {shop.name}
+                                        </Text>
+                                        <Text className="text-sm text-gray-500">
+                                          {shop.vicinity || "Address not available"}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                    <View className="items-end">
+                                      <View className="flex-row items-center">
+                                        <Star size={14} color="#F59E0B" />
+                                        <Text className="ml-1 text-sm text-[#1F2937]">
+                                          {shop.rating?.toFixed(1) ?? "-"}
+                                        </Text>
+                                      </View>
+                                      {shop.distanceKm ? (
+                                        <Text className="text-xs text-gray-500 mt-1">
+                                          {shop.distanceKm.toFixed(1)} km
+                                        </Text>
+                                      ) : null}
+                                    </View>
+                                  </TouchableOpacity>
+                                ))
                               )}
                             </View>
-                          );
-                        })
+                          ) : (
+                            <View className="bg-white/90 rounded-2xl p-4">
+                              <Text className="text-sm text-gray-500 text-center">
+                                Enable at least one category to see results.
+                              </Text>
+                            </View>
+                          )}
+                        </>
                       )}
                     </View>
                   </>

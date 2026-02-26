@@ -144,7 +144,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => router.push("/aiHelper")}
-              className="bg-white/90 flex-row items-center px-4 py-3.5 rounded-2xl shadow-sm mb-8"
+              className="bg-white/90 flex-row items-center px-4 py-3.5 rounded-2xl shadow-sm mb-4"
             >
               <Search size={20} color="#9CA3AF" />
               <Text className="flex-1 ml-3 text-base text-[#9CA3AF]">
@@ -159,6 +159,9 @@ export default function HomeScreen() {
                 </View>
               </View>
             </TouchableOpacity>
+            <Text className="text-xl font-bold text-[#1F2937] mb-4 pl-1">
+              Discover things for your garden
+            </Text>
             <TouchableOpacity
               onPress={() => router.push("/marketplace")}
               activeOpacity={0.8}
