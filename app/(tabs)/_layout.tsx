@@ -93,26 +93,29 @@
 import { Stack } from "expo-router";
 import React from "react";
 import { PlantProvider } from "../../context/PlantContext";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function TabsLayout() {
   return (
     <PlantProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          gestureEnabled: false,
-          animation: "fade",
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="account" />
-        <Stack.Screen name="myPlants" />
-        <Stack.Screen name="aiHelper" />
-        <Stack.Screen name="addPlant" />
-        <Stack.Screen name="plantDetails" />
-        <Stack.Screen name="editPlant" />
-        <Stack.Screen name="marketplace" />
-      </Stack>
+      <SafeAreaProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            gestureEnabled: false,
+            animation: "fade",
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="account" />
+          <Stack.Screen name="myPlants" />
+          <Stack.Screen name="aiHelper" />
+          <Stack.Screen name="addPlant" />
+          <Stack.Screen name="plantDetails" />
+          <Stack.Screen name="editPlant" />
+          <Stack.Screen name="marketplace" />
+        </Stack>
+      </SafeAreaProvider>
     </PlantProvider>
   );
 }

@@ -1,6 +1,6 @@
 import PlantCardExtended from "@/components/PlantCardExtended";
 import { Ionicons } from "@expo/vector-icons";
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { getAuth, FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Brain, Plus } from "lucide-react-native";
@@ -15,6 +15,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
+
+const auth = getAuth();
 
 export default function MyPlants() {
   const router = useRouter();
@@ -53,7 +55,7 @@ export default function MyPlants() {
   };
 
   useEffect(() => {
-    const currentUser = auth().currentUser;
+    const currentUser = auth.currentUser;
     setUser(currentUser);
     if (!currentUser) {
       handleNoUser();

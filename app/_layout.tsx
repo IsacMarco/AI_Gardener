@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
-import auth, {
+import {
   FirebaseAuthTypes,
   onAuthStateChanged,
+  getAuth,
 } from "@react-native-firebase/auth";
 import { Stack, useRouter, useSegments } from "expo-router";
 import "./globals.css";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
+const auth = getAuth();
 
 export default function RootLayout() {
   const [initializing, setInitializing] = useState(true);
@@ -17,7 +21,7 @@ export default function RootLayout() {
   };
 
   useEffect(() => {
-    const subscriber = onAuthStateChanged(auth(), handleAuthStateChanged);
+    const subscriber = onAuthStateChanged(auth, handleAuthStateChanged);
     return subscriber;
   }, []);
 
@@ -34,21 +38,23 @@ export default function RootLayout() {
   if (initializing) return null;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        gestureEnabled: false,
-        animation: "fade",
-      }}
-    >
-      <Stack.Protected guard={!!usr}>
-        <Stack.Screen name="(tabs)" />
-      </Stack.Protected>
-      <Stack.Protected guard={!usr}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="forgotpass" />
-      </Stack.Protected>
-    </Stack>
+    <SafeAreaProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: "fade",
+        }}
+      >
+        <Stack.Protected guard={!!usr}>
+          <Stack.Screen name="(tabs)" />
+        </Stack.Protected>
+        <Stack.Protected guard={!usr}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="signup" />
+          <Stack.Screen name="forgotpass" />
+        </Stack.Protected>
+      </Stack>
+    </SafeAreaProvider>
   );
 }

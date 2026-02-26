@@ -123,6 +123,7 @@ export default function MarketplaceScreen() {
     }, {}),
   );
   const [loadingShops, setLoadingShops] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
@@ -377,6 +378,8 @@ export default function MarketplaceScreen() {
     } catch (error) {
       console.error("Location error:", error);
       // don't show modal for generic location errors here; keep console for debugging
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -514,10 +517,18 @@ export default function MarketplaceScreen() {
         </View>
 
         <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8 pb-6">
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 120 }}
-          >
+          {initialLoading ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator size="large" color="#5F7A4B" />
+              <Text className="text-sm text-gray-500 mt-3">
+                Loading marketplace...
+              </Text>
+            </View>
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 120 }}
+            >
             {activeTab === "shops" ? (
               <>
                 <View className="flex-row items-center justify-between mb-4">
@@ -805,7 +816,8 @@ export default function MarketplaceScreen() {
                 </View>
               </>
             )}
-          </ScrollView>
+            </ScrollView>
+          )}
         </View>
       </SafeAreaView>
 

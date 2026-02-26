@@ -1,5 +1,5 @@
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
-import auth, {
+import {getAuth,
   createUserWithEmailAndPassword,
   signOut,
 } from "@react-native-firebase/auth";
@@ -24,7 +24,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 const { height } = Dimensions.get("window");
-
+const auth = getAuth();
 export default function SignUpScreen() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
@@ -41,8 +41,8 @@ export default function SignUpScreen() {
     setSignUpStatus("loading");
     setModalVisible(true);
     try {
-      await createUserWithEmailAndPassword(auth(), email.trim(), password);
-      await signOut(auth());
+      await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await signOut(auth);
       setSignUpStatus("success");
     } catch (e: any) {
       const err = e as FirebaseError;

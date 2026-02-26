@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import auth, { FirebaseAuthTypes, signOut } from "@react-native-firebase/auth";
+import { getAuth, FirebaseAuthTypes, signOut } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 // 1. NEW IMPORT
@@ -29,7 +29,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
-
+const auth = getAuth();
 // 2. Element de lista pentru Setari
 const SettingItem = ({
   icon,
@@ -77,7 +77,7 @@ const AccountScreen = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
 
   useEffect(() => {
-    const currentUser = auth().currentUser;
+    const currentUser = auth.currentUser;
     setUser(currentUser);
   }, []);
 
@@ -87,7 +87,7 @@ const AccountScreen = () => {
       setLogoutModalVisible(false);
       await Notifications.cancelAllScheduledNotificationsAsync();
       console.log("🔒 Notifications cleared for logout.");
-      await signOut(auth());
+      await signOut(auth);
       router.replace("/");
     } catch (error) {
       console.error("Error signing out: ", error);

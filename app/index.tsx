@@ -1,5 +1,5 @@
 import { AntDesign, FontAwesome } from "@expo/vector-icons";
-import auth, {
+import {
   getAuth,
   GoogleAuthProvider,
   signInWithCredential,
@@ -30,6 +30,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
+const auth = getAuth();
 
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID,
@@ -54,7 +55,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLogInStatus("loading");
     try {
-      await signInWithEmailAndPassword(auth(), email.trim(), password);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
       setModalVisible(true);
     } catch (error: any) {
       console.error(error);

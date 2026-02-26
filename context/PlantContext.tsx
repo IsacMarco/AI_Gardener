@@ -1,4 +1,4 @@
-import auth, { FirebaseAuthTypes, onAuthStateChanged } from "@react-native-firebase/auth";
+import { getAuth, FirebaseAuthTypes, onAuthStateChanged } from "@react-native-firebase/auth";
 import * as Notifications from "expo-notifications";
 import React, {
   createContext,
@@ -12,6 +12,8 @@ import {
   cancelNotification,
   scheduleWateringNotification,
 } from "../services/notifications";
+
+const auth = getAuth();
 
 type Plant = {
   _id: string;
@@ -72,7 +74,7 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
     syncNotifications = false,
   ) => {
     try {
-      const currentUid = specificUserId || auth().currentUser?.uid;
+      const currentUid = specificUserId || auth.currentUser?.uid;
 
       if (!currentUid) {
         setPlants([]);
@@ -135,7 +137,7 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
   };
   // --- 3. AUTH LISTENER ---
   useEffect(() => {
-    const subscriber = onAuthStateChanged(auth(), async (userState) => {
+    const subscriber = onAuthStateChanged(auth, async (userState) => {
       setUser(userState);
 
       if (userState) {

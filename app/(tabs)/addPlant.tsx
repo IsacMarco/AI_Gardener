@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { getAuth, FirebaseAuthTypes } from "@react-native-firebase/auth";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -31,6 +31,8 @@ import {
   scheduleWateringNotification,
   cancelNotification,
 } from "../../services/notifications";
+
+const auth = getAuth();
 
 export default function AddPlant() {
   const router = useRouter();
@@ -77,7 +79,7 @@ export default function AddPlant() {
   };
   // --- VERIFICARE USER ---
   useEffect(() => {
-    const currentUser = auth().currentUser;
+    const currentUser = auth.currentUser;
     setUser(currentUser);
   }, []);
   if (!user && !loading) {
@@ -396,6 +398,9 @@ export default function AddPlant() {
                 </TouchableOpacity>
               </View>
               <View className="bg-[#E8E6DE]/95 flex-1 rounded-t-[35px] px-6 pt-8 pb-10 min-h-[650px]">
+                <Text className="text-[#1F2937] font-bold text-xl mb-3 ml-1">
+                  Plant Details
+                </Text>
                 <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
                   <Text className="text-[#1F2937] font-bold text-base mb-1">
                     Plant Name
@@ -432,7 +437,7 @@ export default function AddPlant() {
                     className="text-base text-[#1F2937] p-0"
                   />
                 </View>
-                <Text className="text-[#1F2937] font-bold text-lg mb-3 ml-1">
+                <Text className="text-[#1F2937] font-bold text-xl mb-3 ml-1">
                   Watering Schedule
                 </Text>
                 <View className="bg-white rounded-3xl p-5 shadow-sm mb-8">
@@ -508,7 +513,7 @@ export default function AddPlant() {
                   )}
                 </View>
                 <TouchableOpacity
-                  className={`py-4 rounded-2xl items-center mt-auto mb-6 border border-white/30 flex-row justify-center ${
+                  className={`py-4 rounded-2xl items-center mt-auto mb-8 border border-white/30 flex-row justify-center ${
                     isSaveDisabled
                       ? "bg-[#6B8E4E] opacity-50 shadow-none"
                       : "bg-[#6B8E4E] shadow-md"
