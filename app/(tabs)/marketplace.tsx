@@ -124,6 +124,7 @@ export default function MarketplaceScreen() {
   );
   const [loadingShops, setLoadingShops] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingLocation, setLoadingLocation] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
@@ -335,15 +336,14 @@ export default function MarketplaceScreen() {
 
   // Reusable loader so we can call it from buttons (Refresh)
   const loadLocationAsync = async () => {
+    setLoadingLocation(true);
     try {
-      // Check whether permission is already granted (no prompt)
       const currentPermission = await Location.getForegroundPermissionsAsync();
       if (!currentPermission.granted) {
         setLocationDenied(true);
         return;
       }
 
-      // Check whether device location services (GPS) are enabled
       const servicesEnabled = await Location.hasServicesEnabledAsync();
       if (!servicesEnabled) {
         console.warn("Location services are disabled.");
@@ -377,14 +377,15 @@ export default function MarketplaceScreen() {
       });
     } catch (error) {
       console.error("Location error:", error);
-      // don't show modal for generic location errors here; keep console for debugging
     } finally {
+      setLoadingLocation(false);
       setInitialLoading(false);
     }
   };
 
   // Called when user taps Refresh: this will request permission (prompts if needed)
   const handleRefresh = async () => {
+    setLoadingLocation(true);
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) {
@@ -402,7 +403,6 @@ export default function MarketplaceScreen() {
 
       setGpsDisabled(false);
 
-      // Now fetch current position and shops
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -425,6 +425,8 @@ export default function MarketplaceScreen() {
       });
     } catch (error) {
       console.error("Refresh location error:", error);
+    } finally {
+      setLoadingLocation(false);
     }
   };
 
@@ -517,11 +519,11 @@ export default function MarketplaceScreen() {
         </View>
 
         <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8 pb-6">
-          {initialLoading ? (
+          {initialLoading || (activeTab === "shops" && loadingLocation) ? (
             <View className="flex-1 items-center justify-center">
               <ActivityIndicator size="large" color="#5F7A4B" />
               <Text className="text-sm text-gray-500 mt-3">
-                Loading marketplace...
+                Detecting location...
               </Text>
             </View>
           ) : (
