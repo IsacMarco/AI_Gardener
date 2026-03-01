@@ -1,5 +1,4 @@
 import PlantCardExtended from "@/components/PlantCardExtended";
-import { Ionicons } from "@expo/vector-icons";
 import { getAuth, FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -13,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
 
 const auth = getAuth();
@@ -22,6 +21,7 @@ export default function MyPlants() {
   const router = useRouter();
   const { plants, loading } = usePlants();
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
+  const insets = useSafeAreaInsets();
 
   const handleNoUser = () => {
     if (!user) {
@@ -57,10 +57,11 @@ export default function MyPlants() {
   useEffect(() => {
     const currentUser = auth.currentUser;
     setUser(currentUser);
-    if (!currentUser) {
-      handleNoUser();
-    }
   }, []);
+
+  if (!user) {
+    return handleNoUser();
+  }
 
   return (
     <View className="flex-1">
@@ -71,21 +72,39 @@ export default function MyPlants() {
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
       />
       <SafeAreaView className="flex-1">
-        <View className="flex-row items-center justify-between px-4 py-2 mb-2">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
-          >
-            <Ionicons name="chevron-back" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-
-        <View className="items-center mb-8">
+        <View className="items-center mt-4 mb-6 px-5">
           <Text className="text-3xl font-bold text-white tracking-wider">
             My Garden
           </Text>
+          <Text className="text-white/85 mt-2 text-base text-center">
+            View and manage your lovely plants.
+          </Text>
         </View>
-        <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8 pb-4">
+        <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-6 pb-4">
+          <View className="flex-row items-center mb-4">
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push("/aiPart/aiChat")}
+              className="flex-1 bg-[#EBE9DE] flex-row items-center py-4 px-4 rounded-2xl border border-white/60"
+            >
+              <View className="mr-2">
+                <Brain size={21} color="#5F7A4B" />
+              </View>
+              <Text className="text-[#1F2937] font-bold text-[15px]">
+                Talk to AI Gardener
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push("/aiPart/addPlant")}
+              className="ml-3 bg-[#5F7A4B] rounded-2xl px-4 py-4 flex-row items-center justify-center"
+            >
+              <Plus size={18} color="white" />
+              <Text className="text-white font-semibold ml-2">Add</Text>
+            </TouchableOpacity>
+          </View>
+
           {loading ? (
             <View className="flex-1 justify-center items-center">
               <ActivityIndicator size="large" color="#5F7A4B" />
@@ -93,13 +112,13 @@ export default function MyPlants() {
           ) : (
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 100 }}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 140 }}
             >
               {plants.length === 0 ? (
-                <View className="items-center mt-10">
-                  <Text className="text-gray-500 text-lg">No plants yet.</Text>
+                <View className="items-center mt-6">
+                  <Text className="text-gray-500 text-lg">No plants yet. 🥺</Text>
                   <Text className="text-gray-400">
-                    Tap + to start your garden!
+                    Tap Add to start your gardening journey!
                   </Text>
                 </View>
               ) : (
@@ -126,29 +145,6 @@ export default function MyPlants() {
               )}
             </ScrollView>
           )}
-
-          <View className="absolute bottom-5 left-5 right-5 flex-row items-center justify-between">
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push("/aiHelper")}
-              className="flex-1 bg-[#EBE9DE] flex-row items-center py-4 px-5 rounded-full mr-4 shadow-sm border border-white/50"
-            >
-              <View className="mr-3">
-                <Brain size={24} color="#5F7A4B" />
-              </View>
-              <Text className="text-[#1F2937] font-bold text-base">
-                Talk to AI Gardener
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              className="w-14 h-14 bg-[#769055] rounded-full items-center justify-center shadow-lg"
-              onPress={() => router.push("/addPlant")}
-            >
-              <Plus size={32} color="white" />
-            </TouchableOpacity>
-          </View>
         </View>
       </SafeAreaView>
     </View>

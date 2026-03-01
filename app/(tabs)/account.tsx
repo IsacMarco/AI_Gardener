@@ -131,18 +131,11 @@ const AccountScreen = () => {
       />
 
       <SafeAreaView className="flex-1">
-        <View className="px-5 mt-2 mb-4">
-          <View className="flex-row justify-between items-center mb-6">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="w-10 h-10 bg-white/20 rounded-full items-center justify-center backdrop-blur-md"
-            >
-              <Ionicons name="chevron-back" size={24} color="white" />
-            </TouchableOpacity>
+        <View className="px-5 mt-4 mb-4">
+          <View className="items-center mb-6">
             <Text className="text-3xl font-bold text-white tracking-wide">
               Profile
             </Text>
-            <TouchableOpacity className="w-10 h-10 opacity-0"></TouchableOpacity>
           </View>
 
           <View className="items-center">

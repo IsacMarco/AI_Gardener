@@ -92,7 +92,7 @@ export default function HomeScreen() {
                 <ActivityIndicator size="small" color="#5F7A4B" />
               ) : recentPlants.length === 0 ? (
                 <TouchableOpacity
-                  onPress={() => router.push("/addPlant")}
+                  onPress={() => router.push("/aiPart/addPlant")}
                   activeOpacity={0.7}
                   className="bg-white/50 border-2 border-dashed border-[#5F7A4B]/40 rounded-2xl p-6 items-center justify-center h-48"
                 >

@@ -895,17 +895,8 @@ out center tags;
         style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
       />
 
-      <SafeAreaView className="flex-1">
-        <View className="flex-row items-center justify-between px-4 py-2 mb-2">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
-          >
-            <Ionicons name="chevron-back" size={24} color="white" />
-          </TouchableOpacity>
-          <View className="w-10 h-10" />
-        </View>
-        <View className="items-center mt-4 mb-6">
+      <SafeAreaView className="flex-1 mt-4">
+        <View className="items-center mb-6">
           <Text className="text-3xl font-bold text-white tracking-wider">
             Marketplace
           </Text>
@@ -948,16 +939,17 @@ out center tags;
         </View>
 
         <View className="px-5 mb-4">
-          <View className="bg-white/90 flex-row items-center px-4 rounded-2xl shadow-sm">
+          {activeTab === "products" ? <View className="bg-white/90 flex-row items-center px-4 rounded-2xl shadow-sm">
             <Search size={18} color="#9CA3AF" />
             <TextInput
               placeholder={
-                activeTab === "shops" ? "Search shops" : "Search products"
+                "Search products"
               }
               placeholderTextColor="#9CA3AF"
               className="flex-1 ml-3 text-base text-[#1F2937]"
             />
           </View>
+           : null}
         </View>
 
         <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8 pb-6">

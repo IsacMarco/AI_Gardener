@@ -272,6 +272,10 @@ export default function AddPlant() {
     return "#5F7A4B"; // Default Green
   };
 
+  const handleGoBack = () => {
+    router.replace("/(tabs)/myPlants");
+  };
+
   return (
     <View className="flex-1">
       <StatusBar barStyle="light-content" />
@@ -347,16 +351,25 @@ export default function AddPlant() {
       </Modal>
       <SafeAreaView className="flex-1">
         <View className="flex-1">
-          <View className="flex-row items-center px-4 py-2 mb-4">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
-            >
-              <Ionicons name="chevron-back" size={24} color="white" />
-            </TouchableOpacity>
-            <Text className="flex-1 text-center text-2xl font-bold text-white mr-10 tracking-wider">
-              Add New Plant
-            </Text>
+          <View className="px-4 mt-2 mb-3">
+            <View className="bg-white/15 border border-white/20 rounded-2xl px-3 py-3 flex-row items-center">
+              <TouchableOpacity
+                onPress={handleGoBack}
+                activeOpacity={0.8}
+                className="w-10 h-10 rounded-xl bg-white/25 items-center justify-center"
+              >
+                <Ionicons name="chevron-back" size={22} color="white" />
+              </TouchableOpacity>
+
+              <View className="flex-1 px-3">
+                <Text className="text-white/80 text-xs font-medium tracking-wide uppercase">
+                  My Garden
+                </Text>
+                <Text className="text-white text-2xl font-bold">Add New Plant</Text>
+              </View>
+
+              <View className="w-10 h-10" />
+            </View>
           </View>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
