@@ -167,18 +167,15 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
 export default function TabsLayout() {
   return (
-    <PlantProvider>
+    // <PlantProvider>
       <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
         <Tabs.Screen name="index" />
         <Tabs.Screen name="myPlants" />
         <Tabs.Screen name="aiHelper" />
         <Tabs.Screen name="marketplace" />
         <Tabs.Screen name="account" />
-        {/* Hidden routes that don't need a tab bar icon */}
-        {/* <Tabs.Screen name="addPlant" options={{ href: null, tabBarStyle: { display: "none" }, }} /> */}
         <Tabs.Screen name="plantDetails" options={{ href: null }} />
-        <Tabs.Screen name="editPlant" options={{ href: null }} />
       </Tabs>
-    </PlantProvider>
+    // </PlantProvider>
   );
 }

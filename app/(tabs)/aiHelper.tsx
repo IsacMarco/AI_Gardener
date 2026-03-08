@@ -30,8 +30,8 @@ export default function AiHelperScreen() {
         <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8">
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => router.push("../aiPart/aiChat")}
-            className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-[#D8D5CB]"
+            onPress={() => router.push("/aiChat")}
+            className="bg-[#F7F6F2] rounded-2xl p-5 mb-4 shadow-sm border border-[#D8D5CB]"
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1 pr-3">
@@ -53,8 +53,8 @@ export default function AiHelperScreen() {
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => router.push("../aiPart/aiIdentifier")}
-            className="bg-white rounded-2xl p-5 shadow-sm border border-[#D8D5CB]"
+            onPress={() => router.push("/aiIdentifier")}
+            className="bg-[#F7F6F2] rounded-2xl p-5 shadow-sm border border-[#D8D5CB]"
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1 pr-3">

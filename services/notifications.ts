@@ -1,6 +1,16 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+let globalNotificationsEnabled = true;
+
+export function setGlobalNotificationsEnabled(enabled: boolean) {
+  globalNotificationsEnabled = enabled;
+}
+
+export function areGlobalNotificationsEnabled() {
+  return globalNotificationsEnabled;
+}
+
 // 1. Handler configured to show notifications when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -47,6 +57,11 @@ export async function scheduleWateringNotification(
   frequencyDays: number,
   timeString: string, // format "HH:mm"
 ) {
+  if (!globalNotificationsEnabled) {
+    console.log("Notifications are globally disabled. Skipping schedule.");
+    return null;
+  }
+
   const [hour, minute] = timeString.split(":").map(Number);
 
   const triggerDate = new Date();

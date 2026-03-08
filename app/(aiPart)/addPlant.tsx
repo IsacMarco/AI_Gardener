@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { getAuth, FirebaseAuthTypes } from "@react-native-firebase/auth";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   AlertCircle,
   Camera,
@@ -36,6 +36,7 @@ const auth = getAuth();
 
 export default function AddPlant() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   // --- STATE DATE PLANTA ---
   const [plantName, setPlantName] = useState("");
   const [species, setSpecies] = useState("");
@@ -74,7 +75,7 @@ export default function AddPlant() {
   const closeModal = () => {
     setModalVisible(false);
     if (modalConfig.type === "success") {
-      router.back();
+      handleGoBack();
     }
   };
   // --- VERIFICARE USER ---
@@ -260,7 +261,7 @@ export default function AddPlant() {
       case "error":
         return <AlertCircle size={32} color="white" strokeWidth={3} />;
       case "selection":
-        return <ImageIcon size={32} color="white" strokeWidth={3} />;
+        return <Camera size={32} color="white" strokeWidth={2} />;
       default:
         return <Ionicons name="information" size={32} color="white" />;
     }
@@ -273,7 +274,17 @@ export default function AddPlant() {
   };
 
   const handleGoBack = () => {
-    router.replace("/(tabs)/myPlants");
+    if (from === "home") {
+      router.replace("/(tabs)");
+      return;
+    }
+
+    if (from === "myPlants") {
+      router.replace("/(tabs)/myPlants");
+      return;
+    }
+
+    router.back();
   };
 
   return (
@@ -363,7 +374,7 @@ export default function AddPlant() {
 
               <View className="flex-1 px-3">
                 <Text className="text-white/80 text-xs font-medium tracking-wide uppercase">
-                  My Garden
+                  {from === "home" ? "Home" : "My Garden"}
                 </Text>
                 <Text className="text-white text-2xl font-bold">Add New Plant</Text>
               </View>

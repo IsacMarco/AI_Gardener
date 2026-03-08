@@ -14,7 +14,7 @@ import {
   StopCircle,
   X,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -37,6 +37,7 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
+import { usePlants } from "../../context/PlantContext";
 
 const genAI = new GoogleGenerativeAI(
   process.env.EXPO_PUBLIC_GEMINI_API_KEY || "",
@@ -98,6 +99,7 @@ const LANGUAGE_OPTIONS = [
 
 export default function AiHelperScreen() {
   const router = useRouter();
+  const { plants } = usePlants();
   const scrollViewRef = useRef<ScrollView>(null);
   const conversationListRef = useRef<ScrollView>(null);
   const conversationItemOffsetsRef = useRef<Record<string, number>>({});
@@ -153,6 +155,41 @@ export default function AiHelperScreen() {
     conversations[0];
   const messages = activeConversation?.messages || [];
   const conversationListMaxHeight = Math.min(340, Math.max(180, height * 0.4));
+
+  const plantsContextForPrompt = useMemo(() => {
+    const header = "=== USER PLANTS CONTEXT (From App Data) ===\n";
+    const footer = "\n=========================================";
+
+    if (!plants || plants.length === 0) {
+      return `${header}User has no saved plants in the app.${footer}`;
+    }
+
+    const listedPlants = plants.slice(0, 20).map((plant, index) => {
+      const species = plant.species?.trim() || "Unknown species";
+      const location = plant.location?.trim() || "Unknown location";
+      const wateringEnabled = plant.watering?.enabled ? "enabled" : "disabled";
+      const frequency = plant.watering?.frequency
+        ? `${plant.watering.frequency} days`
+        : "not set";
+      const time = plant.watering?.time || "not set";
+
+      return (
+        `${index + 1}. Name: ${plant.name}` +
+        ` | Species: ${species}` +
+        ` | Location: ${location}` +
+        ` | Watering: ${wateringEnabled}` +
+        ` | Frequency: ${frequency}` +
+        ` | Time: ${time}`
+      );
+    });
+
+    const truncationNote =
+      plants.length > 20
+        ? `\nNote: showing first 20 of ${plants.length} plants.`
+        : "";
+
+    return `${header}${listedPlants.join("\n")}${truncationNote}${footer}`;
+  }, [plants]);
 
   const updateActiveConversationMessages = (
     nextMessages: Message[] | ((previousMessages: Message[]) => Message[]),
@@ -436,7 +473,7 @@ export default function AiHelperScreen() {
       case "error":
         return <AlertCircle size={32} color="white" strokeWidth={3} />;
       case "selection":
-        return <ImageIcon size={32} color="white" strokeWidth={2} />;
+        return <Camera size={32} color="white" strokeWidth={2} />;
       default:
         return <Ionicons name="information" size={32} color="white" />;
     }
@@ -560,6 +597,7 @@ export default function AiHelperScreen() {
       const promptParts: any[] = [];
 
       promptParts.push(SYSTEM_PROMPT);
+      promptParts.push(plantsContextForPrompt);
 
       const historyContext = messages
         .map((msg) => {
@@ -926,8 +964,11 @@ export default function AiHelperScreen() {
             onPress={(e) => e.stopPropagation()}
             className="bg-white w-full max-w-sm rounded-[24px] p-6 shadow-2xl"
           >
-            <Text className="text-xl font-bold text-[#1F2937] mb-4 text-center">
+            <Text className="text-2xl font-bold text-[#1F2937] mb-1 text-center">
               Conversations
+            </Text>
+            <Text className="text-sm text-gray-400 font-medium mb-6 text-center">
+              Select a conversation to continue or create a new one. For more options, long-press on a conversation.
             </Text>
 
             <ScrollView

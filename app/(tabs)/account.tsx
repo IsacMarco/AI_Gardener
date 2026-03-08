@@ -1,9 +1,13 @@
-import { Ionicons } from "@expo/vector-icons";
 import { getAuth, FirebaseAuthTypes, signOut } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-// 1. NEW IMPORT
 import * as Notifications from "expo-notifications";
+import {
+  areGlobalNotificationsEnabled,
+  scheduleWateringNotification,
+  setGlobalNotificationsEnabled,
+} from "../../services/notifications";
+import { usePlants } from "../../context/PlantContext";
 import {
   Bell,
   ChevronRight,
@@ -18,6 +22,7 @@ import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   Image,
+  Linking,
   Modal,
   ScrollView,
   StatusBar,
@@ -30,6 +35,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
 const auth = getAuth();
+
+const LANGUAGE_OPTIONS = [
+  { code: "en-US", label: "English", short: "EN" },
+  { code: "ro-RO", label: "Română", short: "RO" },
+  { code: "es-ES", label: "Español", short: "ES" },
+  { code: "fr-FR", label: "Français", short: "FR" },
+  { code: "de-DE", label: "Deutsch", short: "DE" },
+  { code: "it-IT", label: "Italiano", short: "IT" },
+  { code: "pt-BR", label: "Português", short: "PT" },
+];
+
 // 2. Element de lista pentru Setari
 const SettingItem = ({
   icon,
@@ -38,11 +54,12 @@ const SettingItem = ({
   isSwitch,
   switchValue,
   onSwitch,
+  onPress,
   isLast,
 }: any) => (
   <TouchableOpacity
     activeOpacity={isSwitch ? 1 : 0.7}
-    onPress={!isSwitch ? () => {} : undefined}
+    onPress={!isSwitch ? onPress : undefined}
     className={`flex-row items-center py-4 ${!isLast ? "border-b border-gray-100" : ""}`}
   >
     <View className="w-10 h-10 bg-[#F5F7F4] rounded-full items-center justify-center mr-4">
@@ -71,15 +88,88 @@ const SettingItem = ({
 
 const AccountScreen = () => {
   const router = useRouter();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const { plants } = usePlants();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [notificationsModalVisible, setNotificationsModalVisible] =
+    useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    LANGUAGE_OPTIONS[0],
+  );
 
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    setUser(currentUser);
+    const initializeAccountState = async () => {
+      const currentUser = auth.currentUser;
+      setUser(currentUser);
+
+      const { status } = await Notifications.getPermissionsAsync();
+      const isEnabled =
+        status === "granted" && areGlobalNotificationsEnabled();
+
+      setNotificationsEnabled(isEnabled);
+      setGlobalNotificationsEnabled(isEnabled);
+    };
+
+    initializeAccountState();
   }, []);
+
+  const scheduleEnabledPlantNotifications = async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    for (const plant of plants) {
+      if (plant.watering?.enabled) {
+        await scheduleWateringNotification(
+          plant.name,
+          plant.watering.frequency,
+          plant.watering.time,
+        );
+      }
+    }
+  };
+
+  const handleNotificationsToggle = async (value: boolean) => {
+    if (!value) {
+      setNotificationsEnabled(false);
+      setGlobalNotificationsEnabled(false);
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      return;
+    }
+
+    const { status } = await Notifications.getPermissionsAsync();
+
+    if (status === "granted") {
+      setNotificationsEnabled(true);
+      setGlobalNotificationsEnabled(true);
+      await scheduleEnabledPlantNotifications();
+      return;
+    }
+
+    const { status: requestedStatus } =
+      await Notifications.requestPermissionsAsync();
+
+    if (requestedStatus === "granted") {
+      setNotificationsEnabled(true);
+      setGlobalNotificationsEnabled(true);
+      await scheduleEnabledPlantNotifications();
+      return;
+    }
+
+    setNotificationsEnabled(false);
+    setGlobalNotificationsEnabled(false);
+    setNotificationsModalVisible(true);
+  };
+
+  const handleContactUs = async () => {
+    const supportEmail =
+      process.env.EXPO_PUBLIC_CONTACT_EMAIL || "support@aigardener.app";
+    const mailUrl = `mailto:${supportEmail}`;
+
+    await Linking.openURL(mailUrl);
+  };
 
   // --- UPDATED LOGOUT LOGIC ---
   const handleFirebaseLogout = async () => {
@@ -164,7 +254,7 @@ const AccountScreen = () => {
           </View>
         </View>
 
-        <View className="flex-1 bg-[#F2F1ED] rounded-t-[40px] shadow-2xl overflow-hidden mt-4">
+        <View className="flex-1 bg-[#F2F1ED] rounded-t-[40px] shadow-2xl overflow-hidden mt-4 mb-12">
           <ScrollView
             contentContainerStyle={{ padding: 24, paddingBottom: 50 }}
             showsVerticalScrollIndicator={false}
@@ -179,12 +269,13 @@ const AccountScreen = () => {
                 label="Notifications"
                 isSwitch={true}
                 switchValue={notificationsEnabled}
-                onSwitch={() => setNotificationsEnabled(!notificationsEnabled)}
+                onSwitch={handleNotificationsToggle}
               />
               <SettingItem
                 icon={<Globe size={20} color="#3B82F6" />}
                 label="Language"
-                value="English"
+                value={selectedLanguage.label}
+                onPress={() => setLanguageModalVisible(true)}
               />
             </View>
             <Text className="text-gray-500 font-bold uppercase text-xs mb-3 ml-2 tracking-wider">
@@ -194,10 +285,12 @@ const AccountScreen = () => {
               <SettingItem
                 icon={<HelpCircle size={20} color="#F59E0B" />}
                 label="Help Center"
+                onPress={() => setHelpModalVisible(true)}
               />
               <SettingItem
                 icon={<ShieldCheck size={20} color="#10B981" />}
                 label="Privacy Policy"
+                onPress={() => setPrivacyModalVisible(true)}
                 isLast={true}
               />
             </View>
@@ -258,6 +351,310 @@ const AccountScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={notificationsModalVisible}
+        onRequestClose={() => setNotificationsModalVisible(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/60 px-6">
+          <View className="bg-white rounded-[32px] p-6 w-full max-w-sm items-center shadow-2xl">
+            <View className="w-16 h-16 bg-amber-50 rounded-full items-center justify-center mb-5">
+              <View className="w-10 h-10 bg-amber-100 rounded-full items-center justify-center">
+                <Bell size={20} color="#F59E0B" />
+              </View>
+            </View>
+
+            <Text className="text-xl font-bold text-gray-800 mb-2">
+              Notifications Disabled
+            </Text>
+            <Text className="text-gray-500 text-center mb-8 px-4 leading-5">
+              Enable notifications from system settings to receive watering reminders.
+            </Text>
+
+            <View className="flex-row w-full gap-3">
+              <TouchableOpacity
+                onPress={() => setNotificationsModalVisible(false)}
+                className="bg-gray-100 flex-1 py-3.5 rounded-xl"
+              >
+                <Text className="text-gray-700 text-center font-bold text-lg">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={async () => {
+                  setNotificationsModalVisible(false);
+                  await Linking.openSettings();
+                }}
+                className="bg-[#5F7A4B] flex-1 py-3.5 rounded-xl"
+              >
+                <Text className="text-white text-center font-bold text-lg">
+                  Open Settings
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={languageModalVisible}
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setLanguageModalVisible(false)}
+          className="flex-1 justify-center items-center bg-black/60 px-6"
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl"
+          >
+            <View className="w-16 h-16 bg-blue-50 rounded-full items-center justify-center mb-5 self-center">
+              <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center">
+                <Globe size={20} color="#3B82F6" />
+              </View>
+            </View>
+
+            <Text className="text-xl font-bold text-gray-800 mb-4 text-center">
+              Select Language
+            </Text>
+
+            <View className="gap-2">
+              {LANGUAGE_OPTIONS.map((language) => {
+                const isSelected = selectedLanguage.code === language.code;
+
+                return (
+                  <TouchableOpacity
+                    key={language.code}
+                    onPress={() => {
+                      setSelectedLanguage(language);
+                      setLanguageModalVisible(false);
+                    }}
+                    className={`flex-row items-center justify-between p-4 rounded-xl ${
+                      isSelected ? "bg-[#5F7A4B]" : "bg-gray-100"
+                    }`}
+                  >
+                    <Text
+                      className={`font-semibold text-base ${
+                        isSelected ? "text-white" : "text-[#1F2937]"
+                      }`}
+                    >
+                      {language.label}
+                    </Text>
+                    <Text
+                      className={`font-bold ${
+                        isSelected ? "text-white/70" : "text-gray-400"
+                      }`}
+                    >
+                      {language.short}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              onPress={() => setLanguageModalVisible(false)}
+              className="mt-4 py-2"
+            >
+              <Text className="text-gray-400 font-semibold text-center">
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={helpModalVisible}
+        onRequestClose={() => setHelpModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-[32px] p-6 max-h-[85%]">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-gray-800">
+                Help Center
+              </Text>
+              <TouchableOpacity
+                onPress={() => setHelpModalVisible(false)}
+                className="bg-gray-100 px-4 py-2 rounded-xl"
+              >
+                <Text className="text-gray-700 font-semibold">Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 24 }}
+            >
+              <Text className="text-sm text-gray-500 mb-4">
+                Need help using AI Gardener? Start with these quick answers.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                1. How do watering reminders work?
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                Enable reminders when adding or editing a plant, then set a frequency and preferred time. AI Gardener will schedule a local notification on your device.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                2. Why am I not receiving notifications?
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                Check that notifications are enabled in both your device settings and the Notifications switch in your Account page. If needed, re-enable them and open system settings from the prompt.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                3. How can I edit plant details?
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                Open a plant from your list, tap Edit, then update name, species, location, photo, or reminder settings. Save changes to apply updates.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                4. Can I turn reminders off for one plant only?
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                Yes. In the plant edit screen, disable reminders for that specific plant and save. Other plants can continue sending reminders.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                5. How do I delete a plant?
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                From your plant list or plant details screen, use the delete option. This removes the plant and its associated scheduled reminder.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                6. Contact Support
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                If your issue continues, please contact the AI Gardener support team from the app support channels or project maintainers.
+              </Text>
+
+              <TouchableOpacity
+                onPress={handleContactUs}
+                className="bg-[#5F7A4B] py-3.5 rounded-xl"
+              >
+                <Text className="text-white text-center font-bold text-lg">
+                  Contact Us
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={privacyModalVisible}
+        onRequestClose={() => setPrivacyModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-[32px] p-6 max-h-[85%]">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-gray-800">
+                Privacy Policy
+              </Text>
+              <TouchableOpacity
+                onPress={() => setPrivacyModalVisible(false)}
+                className="bg-gray-100 px-4 py-2 rounded-xl"
+              >
+                <Text className="text-gray-700 font-semibold">Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 24 }}
+            >
+              <Text className="text-xs text-gray-400 mb-4">
+                Last updated: March 1, 2026
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                1. Overview
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                AI Gardener is designed to help you manage plants, schedules, and reminders. This policy explains what data we collect, how we use it, and how you can control it.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                2. Data We Collect
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                We may collect account data such as your name, email, and profile image. We also store plant related data you add, including plant name, species, location, reminder frequency, preferred time, and optional photos.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                3. How We Use Data
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                Your data is used to provide core app features, sync your plant list, personalize your experience, and send watering reminders when notifications are enabled.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                4. Notifications
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                If you allow notifications, the app schedules local reminders on your device based on your plant settings. You can disable notifications anytime in app settings or system settings.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                5. Photo and Camera Access
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                Camera and photo library permissions are used only when you choose to add or update plant photos. We do not access these resources without your action.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                6. Data Sharing
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                We do not sell your personal data. Data is shared only with services required to operate the app, such as authentication, storage, and backend infrastructure.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                7. Data Retention and Deletion
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                We keep your data while your account is active. You can remove plant entries at any time. You may also request account deletion through support.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                8. Security
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                We use standard security practices to protect your information. No system is fully risk free, but we continuously improve safeguards.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                9. Your Rights
+              </Text>
+              <Text className="text-gray-600 leading-6 mb-4">
+                Depending on your region, you may have rights to access, correct, export, or delete your personal data. Contact support to submit requests.
+              </Text>
+
+              <Text className="text-base font-bold text-gray-800 mb-2">
+                10. Contact
+              </Text>
+              <Text className="text-gray-600 leading-6">
+                For privacy questions, contact the AI Gardener support team through the Help Center section in this app.
+              </Text>
+            </ScrollView>
           </View>
         </View>
       </Modal>

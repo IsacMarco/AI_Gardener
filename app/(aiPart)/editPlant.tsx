@@ -415,33 +415,40 @@ export default function EditPlant() {
       </Modal>
 
       <SafeAreaView className="flex-1">
-        <View className="flex-row items-center px-4 py-2 mb-2">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
-          >
-            <Ionicons name="chevron-back" size={24} color="white" />
-          </TouchableOpacity>
-          <Text className="flex-1 text-center text-2xl font-bold text-white mr-10">
-            Edit Plant
-          </Text>
-        </View>
+        <View className="flex-1">
+          <View className="px-4 mt-2 mb-3">
+            <View className="bg-white/15 border border-white/20 rounded-2xl px-3 py-3 flex-row items-center">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                activeOpacity={0.8}
+                className="w-10 h-10 rounded-xl bg-white/25 items-center justify-center"
+              >
+                <Ionicons name="chevron-back" size={22} color="white" />
+              </TouchableOpacity>
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
-        >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ paddingTop: 15 }}
+              <View className="flex-1 px-3">
+                <Text className="text-white/80 text-xs font-medium tracking-wide uppercase">
+                  My Garden
+                </Text>
+                <Text className="text-white text-2xl font-bold">Edit Plant</Text>
+              </View>
+
+              <View className="w-10 h-10" />
+            </View>
+          </View>
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            className="flex-1"
           >
-            <View className="bg-[#E8E6DE]/95 mt-4 rounded-t-[35px] px-6 pt-8 pb-10 min-h-screen">
+            <ScrollView showsVerticalScrollIndicator={false} className="pt-5">
+            <View className="bg-[#E8E6DE]/95 mt-4 rounded-t-[35px] px-6 pt-10 pb-15 min-h-screen">
               <View className="items-center -mt-16 mb-6">
                 <TouchableOpacity
                   onPress={handlePhotoSelect}
                   className="relative"
                 >
-                  <View className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-200">
+                  <View className="w-32 h-32 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-200">
                     {photoUri ? (
                       <Image
                         source={{ uri: photoUri }}
@@ -599,8 +606,9 @@ export default function EditPlant() {
                 </Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
     </View>
   );

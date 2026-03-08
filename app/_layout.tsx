@@ -7,6 +7,7 @@ import {
 import { Stack, useRouter, useSegments } from "expo-router";
 import "./globals.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { PlantProvider } from "@/context/PlantContext";
 
 const auth = getAuth();
 
@@ -27,10 +28,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (initializing) return;
-    const inAuthGroup = segments[0] === "(tabs)";
-    if (usr && !inAuthGroup) {
+    const inProtectedGroup =
+      segments[0] === "(tabs)" || segments[0] === "(aiPart)";
+
+    if (usr && !inProtectedGroup) {
       router.replace("/(tabs)");
-    } else if (!usr && inAuthGroup) {
+    } else if (!usr && inProtectedGroup) {
       router.replace("/");
     }
   }, [usr, initializing]);
@@ -39,22 +42,25 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          gestureEnabled: false,
-          animation: "fade",
-        }}
-      >
-        <Stack.Protected guard={!!usr}>
-          <Stack.Screen name="(tabs)" />
-        </Stack.Protected>
-        <Stack.Protected guard={!usr}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="signup" />
-          <Stack.Screen name="forgotpass" />
-        </Stack.Protected>
-      </Stack>
+      <PlantProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            gestureEnabled: false,
+            animation: "fade",
+          }}
+        >
+          <Stack.Protected guard={!!usr}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(aiPart)" />
+          </Stack.Protected>
+          <Stack.Protected guard={!usr}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="signup" />
+            <Stack.Screen name="forgotpass" />
+          </Stack.Protected>
+        </Stack>
+      </PlantProvider>
     </SafeAreaProvider>
   );
 }

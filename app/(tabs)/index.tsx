@@ -92,7 +92,9 @@ export default function HomeScreen() {
                 <ActivityIndicator size="small" color="#5F7A4B" />
               ) : recentPlants.length === 0 ? (
                 <TouchableOpacity
-                  onPress={() => router.push("/aiPart/addPlant")}
+                  onPress={() =>
+                    router.push({ pathname: "/addPlant", params: { from: "home" } })
+                  }
                   activeOpacity={0.7}
                   className="bg-white/50 border-2 border-dashed border-[#5F7A4B]/40 rounded-2xl p-6 items-center justify-center h-48"
                 >
@@ -135,6 +137,25 @@ export default function HomeScreen() {
                       />
                     );
                   })}
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({ pathname: "/addPlant", params: { from: "home" } })
+                    }
+                    activeOpacity={0.7}
+                    className="bg-[#8FB37A] rounded-3xl p-4 overflow-hidden shadow-sm items-center justify-center"
+                    style={{ width: 150, height: 185, marginRight: 12 }}
+                  >
+                    <View className="w-14 h-14 bg-white/35 rounded-full items-center justify-center mb-3">
+                      <Plus size={30} color="#2F4A2A" />
+                    </View>
+                    <Text className="text-[#1F2937] text-base font-bold text-center">
+                      Add Plant
+                    </Text>
+                    <Text className="text-[#2F4A2A] text-xs mt-2 text-center px-2">
+                      Grow your garden with another plant
+                    </Text>
+                  </TouchableOpacity>
                 </ScrollView>
               )}
             </View>

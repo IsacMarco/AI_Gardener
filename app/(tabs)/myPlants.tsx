@@ -19,7 +19,7 @@ const auth = getAuth();
 
 export default function MyPlants() {
   const router = useRouter();
-  const { plants, loading } = usePlants();
+  const { plants, loading, deletePlant } = usePlants();
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const insets = useSafeAreaInsets();
 
@@ -84,7 +84,7 @@ export default function MyPlants() {
           <View className="flex-row items-center mb-4">
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={() => router.push("/aiPart/aiChat")}
+              onPress={() => router.push("/aiChat")}
               className="flex-1 bg-[#EBE9DE] flex-row items-center py-4 px-4 rounded-2xl border border-white/60"
             >
               <View className="mr-2">
@@ -97,7 +97,9 @@ export default function MyPlants() {
 
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={() => router.push("/aiPart/addPlant")}
+              onPress={() =>
+                router.push({ pathname: "/addPlant", params: { from: "myPlants" } })
+              }
               className="ml-3 bg-[#5F7A4B] rounded-2xl px-4 py-4 flex-row items-center justify-center"
             >
               <Plus size={18} color="white" />
@@ -139,6 +141,9 @@ export default function MyPlants() {
                       schedule={scheduleText}
                       image={imageSource}
                       specie={plant.species || "Unknown species"}
+                      onDelete={() => {
+                        void deletePlant(plant._id);
+                      }}
                     />
                   );
                 })

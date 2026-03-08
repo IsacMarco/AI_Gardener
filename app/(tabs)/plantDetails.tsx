@@ -11,7 +11,6 @@ import {
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  Alert,
   Dimensions,
   Image,
   Modal,
@@ -30,7 +29,8 @@ export default function PlantDetailsScreen() {
   const { plants, deletePlant } = usePlants();
   const plant = plants.find((p) => p._id === id);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [wateredToday, setWateredToday] = useState(false);
+  const [showDeleteErrorModal, setShowDeleteErrorModal] = useState(false);
+  // const [wateredToday, setWateredToday] = useState(false);
   if (!plant) {
     return (
       <View className="flex-1 justify-center items-center bg-[#f5f5f5]">
@@ -52,7 +52,8 @@ export default function PlantDetailsScreen() {
       setShowDeleteModal(false);
       router.back();
     } catch (error) {
-      Alert.alert("Error", "Could not delete plant.");
+      setShowDeleteModal(false);
+      setShowDeleteErrorModal(true);
     }
   };
 
@@ -299,6 +300,35 @@ export default function PlantDetailsScreen() {
                 <Text className="text-white font-bold text-center">Delete</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showDeleteErrorModal}
+        onRequestClose={() => setShowDeleteErrorModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/60 px-6">
+          <View className="bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-xl">
+            <View className="w-16 h-16 bg-orange-100 rounded-full items-center justify-center mb-4">
+              <Ionicons name="warning-outline" size={32} color="#f59e0b" />
+            </View>
+            <Text className="text-xl font-bold text-gray-800 mb-2">
+              Delete Failed
+            </Text>
+            <Text className="text-gray-500 text-center mb-6 px-2">
+              We couldn&apos;t delete <Text className="font-bold">{plant.name}</Text>.
+              Please try again.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setShowDeleteErrorModal(false)}
+              className="w-full bg-[#5F7A4B] py-3 rounded-xl"
+            >
+              <Text className="text-white font-bold text-center">OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

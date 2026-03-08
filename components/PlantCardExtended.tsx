@@ -2,7 +2,6 @@ import { useRouter } from "expo-router";
 import { Edit3, Leaf, MoreVertical, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  Alert,
   Image,
   ImageSourcePropType,
   Modal,
@@ -37,6 +36,7 @@ export default function PlantListItem({
 }: PlantListItemProps) {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   // --- HANDLERS ---
   const handleOptionsPress = () => {
@@ -61,22 +61,17 @@ export default function PlantListItem({
   };
 
   const handleDelete = () => {
-    // Nu inchidem modalul imediat, intrebam utilizatorul
-    Alert.alert(
-      "Delete Plant?",
-      `Are you sure you want to remove ${name} from your garden? This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            setModalVisible(false);
-            if (onDelete) onDelete();
-          },
-        },
-      ],
-    );
+    setModalVisible(false); // close options modal first
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setDeleteModalVisible(false);
+    if (onDelete) onDelete();
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteModalVisible(false);
   };
 
   const handleWater = () => {
@@ -91,6 +86,8 @@ export default function PlantListItem({
         key={id}
         className="bg-[#F7F6F2] rounded-3xl p-4 mb-4 flex-row items-center shadow-sm border border-white"
         activeOpacity={0.7}
+        delayLongPress={300}
+        onLongPress={handleOptionsPress}
         onPress={() =>
           router.push({
             pathname: "./plantDetails",
@@ -151,8 +148,8 @@ export default function PlantListItem({
             <Text className="text-xl font-bold text-[#1F2937] mb-1 text-center">
               {name}
             </Text>
-            <Text className="text-gray-400 text-sm mb-6 font-medium uppercase tracking-wider">
-              Select Action
+            <Text className="text-gray-400 text-sm mb-6 font-medium tracking-wider">
+              What would you like to do with this plant?
             </Text>
 
             {/* 2. Buton EDITARE (Gri) */}
@@ -161,7 +158,7 @@ export default function PlantListItem({
               className="w-full bg-[#F3F4F6] py-4 rounded-xl flex-row items-center justify-center mb-3 border border-gray-200"
             >
               <Edit3 size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 font-bold text-lg">
+              <Text className="text-gray-700 font-bold text-lg ml-2">
                 Edit Details
               </Text>
             </TouchableOpacity>
@@ -172,7 +169,7 @@ export default function PlantListItem({
               className="w-full bg-red-50 py-4 rounded-xl flex-row items-center justify-center mb-4 border border-red-100"
             >
               <Trash2 size={20} color="#EF4444" className="mr-2" />
-              <Text className="text-[#EF4444] font-bold text-lg">
+              <Text className="text-[#EF4444] font-bold text-lg ml-1">
                 Delete Plant
               </Text>
             </TouchableOpacity>
@@ -180,6 +177,51 @@ export default function PlantListItem({
             {/* Close */}
             <TouchableOpacity onPress={handleCloseModal} className="py-2">
               <Text className="text-gray-400 font-medium text-base">Close</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* --- MODALUL DE CONFIRMARE DE STERGERE --- */}
+      <Modal
+        animationType="fade"
+        transparent
+        visible={deleteModalVisible}
+        onRequestClose={handleCancelDelete}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)" }}
+          activeOpacity={1}
+          onPress={handleCancelDelete}
+          className="justify-center items-center px-6"
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            className="bg-white rounded-[32px] p-6 w-full max-w-sm items-center shadow-2xl"
+          >
+            <View className="w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4">
+              <Trash2 size={30} color="#EF4444" />
+            </View>
+
+            <Text className="text-xl font-bold text-[#1F2937] mb-2 text-center">
+              Delete Plant?
+            </Text>
+            <Text className="text-gray-500 text-center mb-6 leading-6">
+              Are you sure you want to remove {name} from your garden? This cannot be undone.
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleConfirmDelete}
+              className="w-full bg-red-500 py-3.5 rounded-xl items-center mb-3"
+            >
+              <Text className="text-white font-bold text-lg">Yes, Delete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleCancelDelete}
+              className="w-full bg-gray-100 py-3.5 rounded-xl items-center"
+            >
+              <Text className="text-gray-700 font-semibold">Cancel</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
