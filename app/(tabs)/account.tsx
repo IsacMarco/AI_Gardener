@@ -1,4 +1,10 @@
 import { getAuth, FirebaseAuthTypes, signOut } from "@react-native-firebase/auth";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetModalProvider,
+  BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -18,7 +24,7 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -94,12 +100,35 @@ const AccountScreen = () => {
   const [notificationsModalVisible, setNotificationsModalVisible] =
     useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
-  const [helpModalVisible, setHelpModalVisible] = useState(false);
-  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState(
     LANGUAGE_OPTIONS[0],
   );
+  const helpSheetRef = useRef<BottomSheetModal>(null);
+  const privacySheetRef = useRef<BottomSheetModal>(null);
+
+  const supportSheetSnapPoints = useMemo(() => ["80%"], []);
+
+  const renderSheetBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        pressBehavior="close"
+        opacity={0.45}
+      />
+    ),
+    [],
+  );
+
+  const openHelpSheet = useCallback(() => {
+    helpSheetRef.current?.present();
+  }, []);
+
+  const openPrivacySheet = useCallback(() => {
+    privacySheetRef.current?.present();
+  }, []);
 
   useEffect(() => {
     const initializeAccountState = async () => {
@@ -205,7 +234,8 @@ const AccountScreen = () => {
   }
 
   return (
-    <View className="flex-1 bg-[#F2F1ED]">
+    <BottomSheetModalProvider>
+      <View className="flex-1 bg-[#F2F1ED]">
       <StatusBar barStyle="light-content" />
 
       <LinearGradient
@@ -285,12 +315,12 @@ const AccountScreen = () => {
               <SettingItem
                 icon={<HelpCircle size={20} color="#F59E0B" />}
                 label="Help Center"
-                onPress={() => setHelpModalVisible(true)}
+                onPress={openHelpSheet}
               />
               <SettingItem
                 icon={<ShieldCheck size={20} color="#10B981" />}
                 label="Privacy Policy"
-                onPress={() => setPrivacyModalVisible(true)}
+                onPress={openPrivacySheet}
                 isLast={true}
               />
             </View>
@@ -474,191 +504,196 @@ const AccountScreen = () => {
         </TouchableOpacity>
       </Modal>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={helpModalVisible}
-        onRequestClose={() => setHelpModalVisible(false)}
+      <BottomSheetModal
+        ref={helpSheetRef}
+        index={0}
+        snapPoints={supportSheetSnapPoints}
+        enableDynamicSizing={false}
+        enablePanDownToClose={true}
+        backdropComponent={renderSheetBackdrop}
+        handleIndicatorStyle={{ backgroundColor: "#D1D5DB", width: 44 }}
+        backgroundStyle={{ borderTopLeftRadius: 32, borderTopRightRadius: 32 }}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-[32px] p-6 max-h-[85%]">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-gray-800">
-                Help Center
-              </Text>
-              <TouchableOpacity
-                onPress={() => setHelpModalVisible(false)}
-                className="bg-gray-100 px-4 py-2 rounded-xl"
-              >
-                <Text className="text-gray-700 font-semibold">Close</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 24 }}
+        <View className="flex-1 bg-white px-6 pt-2">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-xl font-bold text-gray-800">
+              Help Center
+            </Text>
+            <TouchableOpacity
+              onPress={() => helpSheetRef.current?.dismiss()}
+              className="bg-gray-100 px-4 py-2 rounded-xl"
             >
-              <Text className="text-sm text-gray-500 mb-4">
-                Need help using AI Gardener? Start with these quick answers.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                1. How do watering reminders work?
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                Enable reminders when adding or editing a plant, then set a frequency and preferred time. AI Gardener will schedule a local notification on your device.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                2. Why am I not receiving notifications?
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                Check that notifications are enabled in both your device settings and the Notifications switch in your Account page. If needed, re-enable them and open system settings from the prompt.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                3. How can I edit plant details?
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                Open a plant from your list, tap Edit, then update name, species, location, photo, or reminder settings. Save changes to apply updates.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                4. Can I turn reminders off for one plant only?
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                Yes. In the plant edit screen, disable reminders for that specific plant and save. Other plants can continue sending reminders.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                5. How do I delete a plant?
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                From your plant list or plant details screen, use the delete option. This removes the plant and its associated scheduled reminder.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                6. Contact Support
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                If your issue continues, please contact the AI Gardener support team from the app support channels or project maintainers.
-              </Text>
-
-              <TouchableOpacity
-                onPress={handleContactUs}
-                className="bg-[#5F7A4B] py-3.5 rounded-xl"
-              >
-                <Text className="text-white text-center font-bold text-lg">
-                  Contact Us
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
+              <Text className="text-gray-700 font-semibold">Close</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={privacyModalVisible}
-        onRequestClose={() => setPrivacyModalVisible(false)}
+          <BottomSheetScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 115 }}
+          >
+            <Text className="text-sm text-gray-500 mb-4">
+              Need help using AI Gardener? Start with these quick answers.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              1. How do watering reminders work?
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              Enable reminders when adding or editing a plant, then set a frequency and preferred time. AI Gardener will schedule a local notification on your device.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              2. Why am I not receiving notifications?
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              Check that notifications are enabled in both your device settings and the Notifications switch in your Account page. If needed, re-enable them and open system settings from the prompt.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              3. How can I edit plant details?
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              Open a plant from your list, tap Edit, then update name, species, location, photo, or reminder settings. Save changes to apply updates.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              4. Can I turn reminders off for one plant only?
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              Yes. In the plant edit screen, disable reminders for that specific plant and save. Other plants can continue sending reminders.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              5. How do I delete a plant?
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              From your plant list or plant details screen, use the delete option. This removes the plant and its associated scheduled reminder.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              6. Contact Support
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              If your issue continues, please contact the AI Gardener support team from the app support channels or project maintainers.
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleContactUs}
+              className="bg-[#5F7A4B] py-3.5 rounded-xl"
+            >
+              <Text className="text-white text-center font-bold text-lg">
+                Contact Us
+              </Text>
+            </TouchableOpacity>
+          </BottomSheetScrollView>
+        </View>
+      </BottomSheetModal>
+
+      <BottomSheetModal
+        ref={privacySheetRef}
+        index={0}
+        snapPoints={supportSheetSnapPoints}
+        enableDynamicSizing={false}
+        enablePanDownToClose={true}
+        backdropComponent={renderSheetBackdrop}
+        handleIndicatorStyle={{ backgroundColor: "#D1D5DB", width: 44 }}
+        backgroundStyle={{ borderTopLeftRadius: 32, borderTopRightRadius: 32 }}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-[32px] p-6 max-h-[85%]">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-gray-800">
-                Privacy Policy
-              </Text>
-              <TouchableOpacity
-                onPress={() => setPrivacyModalVisible(false)}
-                className="bg-gray-100 px-4 py-2 rounded-xl"
-              >
-                <Text className="text-gray-700 font-semibold">Close</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 24 }}
+        <View className="flex-1 bg-white px-6 pt-2">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-xl font-bold text-gray-800">
+              Privacy Policy
+            </Text>
+            <TouchableOpacity
+              onPress={() => privacySheetRef.current?.dismiss()}
+              className="bg-gray-100 px-4 py-2 rounded-xl"
             >
-              <Text className="text-xs text-gray-400 mb-4">
-                Last updated: March 1, 2026
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                1. Overview
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                AI Gardener is designed to help you manage plants, schedules, and reminders. This policy explains what data we collect, how we use it, and how you can control it.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                2. Data We Collect
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                We may collect account data such as your name, email, and profile image. We also store plant related data you add, including plant name, species, location, reminder frequency, preferred time, and optional photos.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                3. How We Use Data
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                Your data is used to provide core app features, sync your plant list, personalize your experience, and send watering reminders when notifications are enabled.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                4. Notifications
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                If you allow notifications, the app schedules local reminders on your device based on your plant settings. You can disable notifications anytime in app settings or system settings.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                5. Photo and Camera Access
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                Camera and photo library permissions are used only when you choose to add or update plant photos. We do not access these resources without your action.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                6. Data Sharing
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                We do not sell your personal data. Data is shared only with services required to operate the app, such as authentication, storage, and backend infrastructure.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                7. Data Retention and Deletion
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                We keep your data while your account is active. You can remove plant entries at any time. You may also request account deletion through support.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                8. Security
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                We use standard security practices to protect your information. No system is fully risk free, but we continuously improve safeguards.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                9. Your Rights
-              </Text>
-              <Text className="text-gray-600 leading-6 mb-4">
-                Depending on your region, you may have rights to access, correct, export, or delete your personal data. Contact support to submit requests.
-              </Text>
-
-              <Text className="text-base font-bold text-gray-800 mb-2">
-                10. Contact
-              </Text>
-              <Text className="text-gray-600 leading-6">
-                For privacy questions, contact the AI Gardener support team through the Help Center section in this app.
-              </Text>
-            </ScrollView>
+              <Text className="text-gray-700 font-semibold">Close</Text>
+            </TouchableOpacity>
           </View>
+
+          <BottomSheetScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 115 }}
+          >
+            <Text className="text-xs text-gray-400 mb-4">
+              Last updated: March 1, 2026
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              1. Overview
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              AI Gardener is designed to help you manage plants, schedules, and reminders. This policy explains what data we collect, how we use it, and how you can control it.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              2. Data We Collect
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              We may collect account data such as your name, email, and profile image. We also store plant related data you add, including plant name, species, location, reminder frequency, preferred time, and optional photos.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              3. How We Use Data
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              Your data is used to provide core app features, sync your plant list, personalize your experience, and send watering reminders when notifications are enabled.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2"> 
+              4. Notifications
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              If you allow notifications, the app schedules local reminders on your device based on your plant settings. You can disable notifications anytime in app settings or system settings.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              5. Photo and Camera Access
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              Camera and photo library permissions are used only when you choose to add or update plant photos. We do not access these resources without your action.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              6. Data Sharing
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              We do not sell your personal data. Data is shared only with services required to operate the app, such as authentication, storage, and backend infrastructure.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              7. Data Retention and Deletion
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              We keep your data while your account is active. You can remove plant entries at any time. You may also request account deletion through support.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              8. Security
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              We use standard security practices to protect your information. No system is fully risk free, but we continuously improve safeguards.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              9. Your Rights
+            </Text>
+            <Text className="text-gray-600 leading-6 mb-4">
+              Depending on your region, you may have rights to access, correct, export, or delete your personal data. Contact support to submit requests.
+            </Text>
+
+            <Text className="text-base font-bold text-gray-800 mb-2">
+              10. Contact
+            </Text>
+            <Text className="text-gray-600 leading-6">
+              For privacy questions, contact the AI Gardener support team through the Help Center section in this app.
+            </Text>
+          </BottomSheetScrollView>
         </View>
-      </Modal>
+      </BottomSheetModal>
     </View>
+    </BottomSheetModalProvider>
   );
 };
 

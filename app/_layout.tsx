@@ -7,6 +7,7 @@ import {
 import { Stack, useRouter, useSegments } from "expo-router";
 import "./globals.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PlantProvider } from "@/context/PlantContext";
 
 const auth = getAuth();
@@ -41,26 +42,28 @@ export default function RootLayout() {
   if (initializing) return null;
 
   return (
-    <SafeAreaProvider>
-      <PlantProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            gestureEnabled: false,
-            animation: "fade",
-          }}
-        >
-          <Stack.Protected guard={!!usr}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="(aiPart)" />
-          </Stack.Protected>
-          <Stack.Protected guard={!usr}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="signup" />
-            <Stack.Screen name="forgotpass" />
-          </Stack.Protected>
-        </Stack>
-      </PlantProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <PlantProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              gestureEnabled: false,
+              animation: "fade",
+            }}
+          >
+            <Stack.Protected guard={!!usr}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="(aiPart)" />
+            </Stack.Protected>
+            <Stack.Protected guard={!usr}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="signup" />
+              <Stack.Screen name="forgotpass" />
+            </Stack.Protected>
+          </Stack>
+        </PlantProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
