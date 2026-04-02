@@ -56,7 +56,9 @@ export default function ForgotPasswordScreen() {
 
   // Logica principala de Resetare
   const handleReset = async () => {
-    if (!email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
       showModal(
         "Missing Email",
         "Please enter your email address to continue.",
@@ -64,21 +66,41 @@ export default function ForgotPasswordScreen() {
       );
       return;
     }
+
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+    if (!isValidEmail) {
+      showModal("Invalid Email", "Please enter a valid email address.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth(), email.trim());
+      const signInMethods = await auth().fetchSignInMethodsForEmail(
+        normalizedEmail,
+      );
+
+      if (!signInMethods || signInMethods.length === 0) {
+        showModal(
+          "Account Not Found",
+          "This email is not registered in the app. Please sign up first.",
+          "error",
+        );
+        return;
+      }
+
+      await sendPasswordResetEmail(auth(), normalizedEmail);
       showModal(
         "Check your Inbox",
-        `We have sent a password recovery link to:\n${email}\n\nPlease check your spam folder too!`,
+        `We have sent a password recovery link to:\n${normalizedEmail}\n\nPlease check your spam folder too!`,
         "success",
       );
     } catch (error: any) {
-      console.log(error);
+      console.warn("Forgot password error:", error?.code || error?.message || error);
       let msg = "Something went wrong. Please try again later.";
       if (error.code === "auth/invalid-email") {
         msg = "The email address format is invalid.";
       } else if (error.code === "auth/user-not-found") {
-        msg = "No user found with this email address.";
+        msg = "This email is not registered in the app. Please sign up first.";
       }
       showModal("Error", msg, "error");
     } finally {

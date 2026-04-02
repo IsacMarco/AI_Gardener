@@ -1,5 +1,6 @@
-import { AntDesign, FontAwesome } from "@expo/vector-icons";
+import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import {
+  fetchSignInMethodsForEmail,
   getAuth,
   GoogleAuthProvider,
   signInWithCredential,
@@ -42,13 +43,45 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showSignupAction, setShowSignupAction] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [logInStatus, setLogInStatus] = useState<"idle" | "loading" | "error">(
     "idle",
   );
 
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isValidPassword = password.length >= 6;
+  const canLogin = isValidEmail && isValidPassword && logInStatus !== "loading";
+
   const handleCloseModal = () => {
     setModalVisible(false);
+    setShowSignupAction(false);
     setLogInStatus("idle");
+  };
+
+  const handleGoToSignup = () => {
+    setModalVisible(false);
+    setShowSignupAction(false);
+    setLogInStatus("idle");
+    router.push("/signup");
+  };
+
+  const getLoginErrorMessage = (errorCode?: string) => {
+    switch (errorCode) {
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+        return "Invalid password. Please check and try again.";
+      case "auth/user-not-found":
+        return "No account found with this email. Please check and try again.";
+      case "auth/invalid-email":
+        return "Invalid email. Please check and try again.";
+      case "auth/too-many-requests":
+        return "Too many failed attempts. Please wait a moment and try again.";
+      case "auth/network-request-failed":
+        return "Network error. Please check your connection and try again.";
+      default:
+        return "Something went wrong. Please try again.";
+    }
   };
 
   // --- LOGIN CU EMAIL ---
@@ -56,15 +89,28 @@ export default function LoginScreen() {
     setLogInStatus("loading");
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      setModalVisible(true);
+      setLogInStatus("idle");
     } catch (error: any) {
-      console.error(error);
-      setLogInStatus("error");
-      if (error.code === "auth/invalid-credential") {
-        setErrorMessage("Invalid email or password.");
-      } else {
-        setErrorMessage("Something went wrong. Please try again.");
+      let normalizedCode = error?.code as string | undefined;
+
+      if (
+        normalizedCode === "auth/invalid-credential" ||
+        normalizedCode === "auth/wrong-password"
+      ) {
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, email.trim());
+          normalizedCode = methods.length === 0 ? "auth/user-not-found" : "auth/wrong-password";
+        } catch {
+          // If this lookup fails, keep original code.
+        }
       }
+
+      if (error?.code !== "auth/invalid-credential") {
+        console.warn("Login error:", error?.code || error?.message || error);
+      }
+      setLogInStatus("error");
+      setShowSignupAction(normalizedCode === "auth/user-not-found");
+      setErrorMessage(getLoginErrorMessage(normalizedCode));
       setModalVisible(true);
     }
   };
@@ -87,7 +133,7 @@ export default function LoginScreen() {
       const authInstance = getAuth();
       await signInWithCredential(authInstance, googleCredential);
       // 6. Daca ajunge aici, login-ul a reusit
-      setModalVisible(true);
+      setLogInStatus("idle");
     } catch (error: any) {
       console.error("Google Sign In Error:", error);
 
@@ -152,22 +198,35 @@ export default function LoginScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
-                <TextInput
-                  className="bg-white rounded-xl h-12 px-4 mb-4 text-base text-gray-800"
-                  placeholder="Password"
-                  placeholderTextColor="#A0A0A0"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
+                <View className="relative mb-4">
+                  <TextInput
+                    className="bg-white rounded-xl h-12 px-4 pr-12 text-base text-gray-800"
+                    placeholder="Password"
+                    placeholderTextColor="#A0A0A0"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword((value) => !value)}
+                    className="absolute right-3 top-0 h-12 justify-center"
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color="#6B7280"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View className="flex-row justify-between mb-4">
                 <TouchableOpacity
-                  className="bg-white h-12 rounded-xl justify-center items-center"
+                  className={`h-12 rounded-xl justify-center items-center ${canLogin ? "bg-white" : "bg-white/60"}`}
                   style={{ width: "48%" }}
                   onPress={handleLogin}
-                  disabled={logInStatus === "loading"}
+                  disabled={!canLogin}
                 >
                   {logInStatus === "loading" ? (
                     <ActivityIndicator color="#5F7A4B" />
@@ -253,11 +312,11 @@ export default function LoginScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  className="w-full bg-gray-100 py-4 rounded-full items-center shadow-sm"
-                  onPress={handleCloseModal}
+                  className={`w-full py-4 rounded-full items-center shadow-sm ${showSignupAction ? "bg-[#5F7A4B]" : "bg-gray-100"}`}
+                  onPress={showSignupAction ? handleGoToSignup : handleCloseModal}
                 >
-                  <Text className="text-[#1F2937] font-bold text-base">
-                    Try Again
+                  <Text className={`font-bold text-base ${showSignupAction ? "text-white" : "text-[#1F2937]"}`}>
+                    {showSignupAction ? "Create Account" : "Try Again"}
                   </Text>
                 </TouchableOpacity>
               </>
