@@ -29,7 +29,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
 import {
   scheduleWateringNotification,
-  cancelNotification,
 } from "../../services/notifications";
 
 const auth = getAuth();
@@ -48,7 +47,7 @@ export default function AddPlant() {
   const [wateringIntervalDays, setWateringIntervalDays] = useState(3);
   const [wateringTime, setWateringTime] = useState("20:00");
   // --- STATE SYSTEM ---
-  const { refreshPlants } = usePlants();
+  const { addPlant } = usePlants();
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   // --- STATE MODAL UNIFICAT ---
@@ -125,41 +124,30 @@ export default function AddPlant() {
         notificationId: notificationId,
       };
 
-      // Step C: Send to Server (Backend)
-      // Note: Make sure your server.js is updated to receive "notificationId" inside req.body
-      const response = await fetch(
-        process.env.EXPO_PUBLIC_MONGO_SERVER_URL + "/add-plant",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      const result = await addPlant(payload);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        await refreshPlants();
+      if (result.success && !result.savedLocally) {
         showModal(
           "success",
           "Plant Added!",
           `${plantName} has been successfully added to your garden.`,
         );
+      } else if (result.success && result.savedLocally) {
+        showModal(
+          "success",
+          "Saved Offline",
+          `${plantName} was saved on your phone and will sync to the database when internet is back.`,
+        );
       } else {
         showModal(
           "error",
           "Save Failed",
-          data.error || "Could not save plant.",
+          "Could not save plant.",
         );
-        // Fallback: If server save fails, we should ideally cancel the notification we just made
-        // to avoid "ghost" notifications.
-        if (notificationId) {
-          await cancelNotification(notificationId); // (Optional but recommended safety)
-        }
       }
     } catch (error: any) {
       console.error("Error saving plant:", error);
-      showModal("error", "Connection Error", "Check server.");
+      showModal("error", "Connection Error", "Please check your connection.");
     } finally {
       setLoading(false);
     }

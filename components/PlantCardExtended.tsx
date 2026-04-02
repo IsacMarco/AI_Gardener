@@ -15,6 +15,8 @@ interface PlantListItemProps {
   specie: string;
   name: string;
   schedule: string;
+  from?: "home" | "myPlants";
+  remindersEnabled?: boolean;
   image: ImageSourcePropType;
   // Callback-uri pentru actiuni
   onPress?: () => void;
@@ -26,6 +28,8 @@ interface PlantListItemProps {
 export default function PlantListItem({
   name,
   schedule,
+  from,
+  remindersEnabled = true,
   image,
   id,
   specie,
@@ -37,6 +41,7 @@ export default function PlantListItem({
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const scheduleLabel = remindersEnabled ? schedule : "Reminders off";
 
   // --- HANDLERS ---
   const handleOptionsPress = () => {
@@ -91,7 +96,7 @@ export default function PlantListItem({
         onPress={() =>
           router.push({
             pathname: "./plantDetails",
-            params: { id: id },
+            params: { id: id, from: from },
           })
         }
       >
@@ -107,8 +112,10 @@ export default function PlantListItem({
           <Text className="text-[#888888] text-xs font-medium text-lg text-gray-500 italic font-medium">
             {specie || "Unknown"}
           </Text>
-          <Text className="text-[#5F7A4B] text-xs font-bold mt-1">
-            {schedule}
+          <Text
+            className={`text-xs font-bold mt-1 ${remindersEnabled ? "text-[#5F7A4B]" : "text-gray-400"}`}
+          >
+            {scheduleLabel}
           </Text>
         </View>
 

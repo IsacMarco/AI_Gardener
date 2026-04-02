@@ -24,18 +24,33 @@ import { usePlants } from "../../context/PlantContext";
 const { height } = Dimensions.get("window");
 export default function PlantDetailsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { id } = params;
+  const params = useLocalSearchParams<{ id?: string | string[]; from?: string | string[] }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const { plants, deletePlant } = usePlants();
   const plant = plants.find((p) => p._id === id);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeleteErrorModal, setShowDeleteErrorModal] = useState(false);
+  const goBackToSource = () => {
+    if (from === "home") {
+      router.replace("/(tabs)");
+      return;
+    }
+
+    if (from === "myPlants") {
+      router.replace("/(tabs)/myPlants");
+      return;
+    }
+
+    router.back();
+  };
+
   // const [wateredToday, setWateredToday] = useState(false);
   if (!plant) {
     return (
       <View className="flex-1 justify-center items-center bg-[#f5f5f5]">
         <Text className="text-gray-500">Plant not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-4">
+        <TouchableOpacity onPress={goBackToSource} className="mt-4">
           <Text className="text-[#5F7A4B] font-bold">Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -50,7 +65,7 @@ export default function PlantDetailsScreen() {
     try {
       await deletePlant(plant._id);
       setShowDeleteModal(false);
-      router.back();
+      goBackToSource();
     } catch (error) {
       setShowDeleteModal(false);
       setShowDeleteErrorModal(true);
@@ -85,7 +100,7 @@ export default function PlantDetailsScreen() {
 
       <SafeAreaView className="absolute top-0 w-full flex-row justify-between px-4 z-10">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={goBackToSource}
           className="w-10 h-10 bg-black/30 rounded-full items-center justify-center backdrop-blur-md"
         >
           <Ionicons name="chevron-back" size={24} color="white" />

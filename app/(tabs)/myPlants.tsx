@@ -1,11 +1,13 @@
 import PlantCardExtended from "@/components/PlantCardExtended";
 import { getAuth, FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Brain, Plus } from "lucide-react-native";
+import { Brain, Plus, RefreshCcw, WifiOff } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   ScrollView,
   StatusBar,
   Text,
@@ -19,9 +21,29 @@ const auth = getAuth();
 
 export default function MyPlants() {
   const router = useRouter();
-  const { plants, loading, deletePlant } = usePlants();
+  const {
+    plants,
+    loading,
+    refreshPlants,
+    deletePlant,
+    lastPlantsSource,
+    shouldShowOfflineModal,
+    dismissLocalFallbackNotice,
+  } = usePlants();
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await refreshPlants();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleNoUser = () => {
     if (!user) {
@@ -59,12 +81,44 @@ export default function MyPlants() {
     setUser(currentUser);
   }, []);
 
+  useEffect(() => {
+    if (isFocused && shouldShowOfflineModal && !showOfflineModal) {
+      setShowOfflineModal(true);
+    }
+  }, [isFocused, shouldShowOfflineModal, showOfflineModal]);
+
   if (!user) {
     return handleNoUser();
   }
 
   return (
     <View className="flex-1">
+      <Modal visible={showOfflineModal && isFocused} transparent animationType="fade">
+        <View className="flex-1 justify-center items-center bg-black/60 px-6">
+          <View className="bg-white p-6 rounded-3xl items-center w-full max-w-sm">
+            <View className="w-16 h-16 bg-orange-100 rounded-full items-center justify-center mb-4">
+              <WifiOff size={30} color="#D97706" />
+            </View>
+            <Text className="text-xl font-bold mb-2 text-center">
+              No Server Connection
+            </Text>
+            <Text className="text-gray-500 mb-6 text-center leading-5">
+              We have displayed the plants saved locally on your phone. Data will be
+              updated automatically when connection is restored.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowOfflineModal(false);
+                dismissLocalFallbackNotice();
+              }}
+              className="bg-[#5F7A4B] w-full py-3 rounded-xl"
+            >
+              <Text className="text-white text-center font-bold">I Understand</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <StatusBar barStyle="light-content" />
       <LinearGradient
         colors={["#5F7A4B", "#8C8673", "#AFA696"]}
@@ -81,6 +135,15 @@ export default function MyPlants() {
           </Text>
         </View>
         <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-6 pb-4">
+          {lastPlantsSource === "local" && (
+            <View className="mb-4 bg-orange-100 border border-orange-200 rounded-2xl px-4 py-3 flex-row items-center">
+              <WifiOff size={18} color="#D97706" />
+              <Text className="ml-2 text-orange-800 font-semibold">
+                Offline mode: we are displaying the plants saved locally
+              </Text>
+            </View>
+          )}
+
           <View className="flex-row items-center mb-4">
             <TouchableOpacity
               activeOpacity={0.85}
@@ -105,6 +168,19 @@ export default function MyPlants() {
               <Plus size={18} color="white" />
               <Text className="text-white font-semibold ml-2">Add</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleRefresh}
+              disabled={refreshing}
+              className="ml-3 bg-white rounded-2xl px-4 py-4 flex-row items-center justify-center"
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#5F7A4B" />
+              ) : (
+                <RefreshCcw size={18} color="#5F7A4B" />
+              )}
+            </TouchableOpacity>
           </View>
 
           {loading ? (
@@ -125,9 +201,12 @@ export default function MyPlants() {
                 </View>
               ) : (
                 plants.map((plant) => {
+                  const remindersEnabled = Boolean(plant.watering?.enabled);
                   let scheduleText = "No schedule";
                   if (plant.watering?.enabled && plant.watering?.frequency) {
                     scheduleText = `Every ${plant.watering.frequency} days at ${plant.watering.time}`;
+                  } else if (plant.watering && !plant.watering.enabled) {
+                    scheduleText = "Reminders off";
                   }
 
                   const imageSource = plant.imageBase64
@@ -139,6 +218,8 @@ export default function MyPlants() {
                       id={plant._id}
                       name={plant.name}
                       schedule={scheduleText}
+                      from="myPlants"
+                      remindersEnabled={remindersEnabled}
                       image={imageSource}
                       specie={plant.species || "Unknown species"}
                       onDelete={() => {

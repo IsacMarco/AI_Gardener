@@ -45,7 +45,7 @@ export default function EditPlant() {
   const params = useLocalSearchParams();
   const { id } = params;
 
-  const { plants, refreshPlants } = usePlants();
+  const { plants, updatePlant } = usePlants();
 
   // --- STATE FOR PLANT DATA ---
   const [plantName, setPlantName] = useState("");
@@ -224,21 +224,17 @@ export default function EditPlant() {
           : photoUri,
       };
 
-      const response = await fetch(
-        process.env.EXPO_PUBLIC_MONGO_SERVER_URL + `/plants/${id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatePayload),
-        },
-      );
+      const normalizedId = Array.isArray(id) ? id[0] : id;
+      if (!normalizedId) {
+        alert("Plant not found");
+        return;
+      }
+      const result = await updatePlant(normalizedId, updatePayload);
 
-      if (response.ok) {
-        await refreshPlants();
+      if (result.success) {
         setShowSuccessModal(true);
       } else {
-        const data = await response.json();
-        alert(data.error || "Update failed");
+        alert("Update failed");
       }
     } catch (error) {
       console.error("Error updating plant:", error);

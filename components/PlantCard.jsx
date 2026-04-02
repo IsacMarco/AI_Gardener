@@ -2,9 +2,18 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
-const PlantCard = ({ id, name, specie, image, schedule }) => {
+const PlantCard = ({
+  id,
+  name,
+  specie,
+  image,
+  schedule,
+  remindersEnabled = true,
+  from,
+}) => {
   const isUserPhoto = image && image.uri;
   const router = useRouter();
+  const scheduleLabel = remindersEnabled ? schedule : "Reminders off";
   return (
     <TouchableOpacity
       key={id}
@@ -14,7 +23,7 @@ const PlantCard = ({ id, name, specie, image, schedule }) => {
       onPress={() =>
         router.push({
           pathname: "/plantDetails",
-          params: { id: id },
+          params: { id: id, from: from },
         })
       }
     >
@@ -55,7 +64,7 @@ const PlantCard = ({ id, name, specie, image, schedule }) => {
           className="text-gray-500 text-xs mt-2 text-center"
           numberOfLines={2}
         >
-          {schedule}
+          {scheduleLabel}
         </Text>
       </View>
     </TouchableOpacity>
