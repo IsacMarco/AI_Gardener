@@ -713,7 +713,7 @@ export default function AiHelperScreen() {
           </View>
         </View>
 
-        <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] pt-4">
+        <View className="flex-1 bg-[#F2F1ED] rounded-t-[35px] pt-4">
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             className="flex-1"

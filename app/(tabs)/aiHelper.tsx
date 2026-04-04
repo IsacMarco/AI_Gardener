@@ -27,7 +27,7 @@ export default function AiHelperScreen() {
           </Text>
         </View>
 
-        <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8">
+        <View className="flex-1 bg-[#F2F1ED] rounded-t-[35px] px-5 pt-8">
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => router.push("/aiChat")}

@@ -89,7 +89,7 @@ export default function PlantListItem({
       {/* --- CARDUL PRINCIPAL --- */}
       <TouchableOpacity
         key={id}
-        className="bg-[#F7F6F2] rounded-3xl p-4 mb-4 flex-row items-center shadow-sm border border-white"
+        className="bg-[#F7F6F2] rounded-3xl p-4 mb-4 flex-row items-center shadow-sm border border-[#E8E6DE]"
         activeOpacity={0.7}
         delayLongPress={300}
         onLongPress={handleOptionsPress}

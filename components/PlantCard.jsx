@@ -18,7 +18,7 @@ const PlantCard = ({
     <TouchableOpacity
       key={id}
       activeOpacity={0.7}
-      className="bg-[#F7F6F2] rounded-3xl p-4 overflow-hidden shadow-sm"
+      className="bg-[#F7F6F2] rounded-3xl p-4 overflow-hidden shadow-sm border border-[#E8E6DE]"
       style={{ width: 150, height: 185, marginRight: 12 }}
       onPress={() =>
         router.push({

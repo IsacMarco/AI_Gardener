@@ -108,7 +108,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-6 pt-8 pb-10 min-h-full">
+          <View className="flex-1 bg-[#F2F1ED] rounded-t-[35px] px-6 pt-8 pb-10 min-h-full">
             {lastPlantsSource === "local" && (
               <View className="mb-4 bg-orange-100 border border-orange-200 rounded-2xl px-4 py-3 flex-row items-center">
                 <WifiOff size={18} color="#D97706" />

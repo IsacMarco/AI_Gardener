@@ -134,7 +134,7 @@ export default function MyPlants() {
             View and manage your lovely plants.
           </Text>
         </View>
-        <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-6 pb-4">
+        <View className="flex-1 bg-[#F2F1ED] rounded-t-[35px] px-5 pt-6 pb-4">
           {lastPlantsSource === "local" && (
             <View className="mb-4 bg-orange-100 border border-orange-200 rounded-2xl px-4 py-3 flex-row items-center">
               <WifiOff size={18} color="#D97706" />
@@ -146,9 +146,8 @@ export default function MyPlants() {
 
           <View className="flex-row items-center mb-4">
             <TouchableOpacity
-              activeOpacity={0.85}
               onPress={() => router.push("/aiChat")}
-              className="flex-1 bg-[#EBE9DE] flex-row items-center py-4 px-4 rounded-2xl border border-white/60"
+              className="flex-1 flex-row items-center py-4 px-4 rounded-2xl border border-[#6e865b] bg-[#F7F6F2]"
             >
               <View className="mr-2">
                 <Brain size={21} color="#5F7A4B" />

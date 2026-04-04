@@ -284,9 +284,9 @@ const AccountScreen = () => {
           </View>
         </View>
 
-        <View className="flex-1 bg-[#F2F1ED] rounded-t-[40px] shadow-2xl overflow-hidden mt-4 mb-12">
+        <View className="flex-1 bg-[#F2F1ED] rounded-t-[40px] shadow-2xl overflow-hidden mt-4 pt-5 mb-12">
           <ScrollView
-            contentContainerStyle={{ padding: 24, paddingBottom: 50 }}
+            contentContainerStyle={{ paddingLeft: 24, paddingRight: 24, paddingBottom: 50 }}
             showsVerticalScrollIndicator={false}
           >
             <Text className="text-gray-500 font-bold uppercase text-xs mb-3 ml-2 tracking-wider">

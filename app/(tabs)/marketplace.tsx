@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { MapPin, Search, ShoppingBag, Star, Leaf } from "lucide-react-native";
+import { MapPin, ShoppingBag, Star, Leaf } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Camera,
@@ -20,7 +20,6 @@ import {
   ScrollView,
   StatusBar,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -118,41 +117,6 @@ const SHOP_CATEGORIES: ShopCategory[] = [
   },
 ];
 
-const PRODUCTS = [
-  {
-    id: "1",
-    name: "Organic Potting Mix",
-    price: "29.99",
-    unit: "20L",
-    rating: 4.8,
-    badge: "Best seller",
-  },
-  {
-    id: "2",
-    name: "Indoor Herb Kit",
-    price: "59.00",
-    unit: "set",
-    rating: 4.6,
-    badge: "Starter",
-  },
-  {
-    id: "3",
-    name: "Drip Irrigation Set",
-    price: "89.50",
-    unit: "12 pcs",
-    rating: 4.7,
-    badge: "New",
-  },
-  {
-    id: "4",
-    name: "Ceramic Planter",
-    price: "24.00",
-    unit: "20cm",
-    rating: 4.4,
-    badge: "Decor",
-  },
-];
-
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -198,18 +162,23 @@ export default function MarketplaceScreen() {
     longitude: number;
   } | null>(null);
   const [noResults, setNoResults] = useState(false);
-  const [activeTab, setActiveTab] = useState<"shops" | "products">("shops");
   const [locationDenied, setLocationDenied] = useState(false);
   const [gpsDisabled, setGpsDisabled] = useState(false); // New state added
   const [selectedResultCategoryId, setSelectedResultCategoryId] = useState(
     SHOP_CATEGORIES[0].id,
   );
   const [selectedShop, setSelectedShop] = useState<NearbyShop | null>(null);
+  const [selectedMapShop, setSelectedMapShop] = useState<NearbyShop | null>(
+    null,
+  );
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [sortMode, setSortMode] = useState<"relevance" | "distance">(
     "relevance",
   );
   const cameraRef = useRef<CameraRef | null>(null);
+  const cameraFitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const osmCacheRef = useRef<Map<string, { timestamp: number; elements: OSMElement[] }>>(
     new Map(),
   );
@@ -308,6 +277,88 @@ export default function MarketplaceScreen() {
     } catch (error) {
       console.error("Open maps error:", error);
     }
+  };
+
+  const getZoomForRadius = (radius: number) => {
+    if (radius <= 1000) return 14;
+    if (radius <= 2500) return 13;
+    if (radius <= 5000) return 12;
+    return 11.2;
+  };
+
+  const fitCameraToFilteredResults = (preferUserCenter = false) => {
+    if (Platform.OS === "web" || !cameraRef.current) {
+      return;
+    }
+
+    if (cameraFitTimeoutRef.current) {
+      clearTimeout(cameraFitTimeoutRef.current);
+      cameraFitTimeoutRef.current = null;
+    }
+
+    const points: Array<[number, number]> = shops.map((shop) => [
+      shop.location.longitude,
+      shop.location.latitude,
+    ]);
+
+    if (lastCoords) {
+      points.push([lastCoords.longitude, lastCoords.latitude]);
+    }
+
+    if (points.length === 0) {
+      cameraRef.current.setCamera({
+        centerCoordinate: cameraCenterCoordinate,
+        zoomLevel: getZoomForRadius(radiusMeters),
+        animationDuration: 700,
+      });
+      return;
+    }
+
+    const longitudes = points.map((point) => point[0]);
+    const latitudes = points.map((point) => point[1]);
+
+    const ne: [number, number] = [
+      Math.max(...longitudes),
+      Math.max(...latitudes),
+    ];
+    const sw: [number, number] = [
+      Math.min(...longitudes),
+      Math.min(...latitudes),
+    ];
+
+    const samePoint = ne[0] === sw[0] && ne[1] === sw[1];
+    if (samePoint) {
+      cameraRef.current.setCamera({
+        centerCoordinate: ne,
+        zoomLevel: getZoomForRadius(radiusMeters),
+        animationDuration: 700,
+      });
+      return;
+    }
+
+    const preferredCenter: [number, number] =
+      preferUserCenter && lastCoords
+        ? [lastCoords.longitude, lastCoords.latitude]
+        : cameraCenterCoordinate;
+
+    cameraRef.current.setCamera({
+      centerCoordinate: preferredCenter,
+      zoomLevel: getZoomForRadius(radiusMeters) - 1,
+      animationDuration: 250,
+    });
+
+    cameraFitTimeoutRef.current = setTimeout(() => {
+      cameraRef.current?.fitBounds(ne, sw, [48, 48, 48, 48], 900);
+      cameraFitTimeoutRef.current = null;
+    }, 260);
+  };
+
+  const focusCameraOnUser = () => {
+    if (!lastCoords) {
+      return;
+    }
+
+    fitCameraToFilteredResults(true);
   };
 
   const getLocationErrorMessage = (error: unknown) => {
@@ -883,12 +934,22 @@ out center tags;
 
   useEffect(() => {
     Logger.setLogCallback((log) => {
-      if (
+      const normalizedMessage = log.message.toLowerCase();
+      const isCanceledHttpWarning =
         log.tag === "Mbgl-HttpRequest" &&
-        log.message.startsWith(
-          "Request failed due to a permanent error: Canceled",
-        )
-      ) {
+        normalizedMessage.includes(
+          "request failed due to a permanent error",
+        ) &&
+        (normalizedMessage.includes("canceled") ||
+          normalizedMessage.includes("cancel"));
+
+      const isDashArrayParseWarning =
+        log.tag === "Mbgl" &&
+        log.message.includes(
+          "line dasharray requires at least two elements",
+        );
+
+      if (isCanceledHttpWarning || isDashArrayParseWarning) {
         return true;
       }
 
@@ -905,6 +966,17 @@ out center tags;
       applyRadiusFilter(allShopsByCategory, radiusMeters);
     }
   }, [radiusMeters, allShopsByCategory, activeCategories]);
+
+  useEffect(() => {
+    if (!selectedMapShop) {
+      return;
+    }
+
+    const stillVisible = shops.some((shop) => shop.id === selectedMapShop.id);
+    if (!stillVisible) {
+      setSelectedMapShop(null);
+    }
+  }, [shops, selectedMapShop]);
 
   useEffect(() => {
     const activeCategoryIds = SHOP_CATEGORIES.filter(
@@ -951,53 +1023,15 @@ out center tags;
   }, 0);
 
   useEffect(() => {
-    if (Platform.OS === "web" || !cameraRef.current) {
-      return;
-    }
+    fitCameraToFilteredResults(false);
 
-    if (shops.length === 0) {
-      cameraRef.current.setCamera({
-        centerCoordinate: cameraCenterCoordinate,
-        zoomLevel: 11,
-        animationDuration: 700,
-      });
-      return;
-    }
-
-    const longitudes = shops.map((shop) => shop.location.longitude);
-    const latitudes = shops.map((shop) => shop.location.latitude);
-
-    const ne: [number, number] = [
-      Math.max(...longitudes),
-      Math.max(...latitudes),
-    ];
-    const sw: [number, number] = [
-      Math.min(...longitudes),
-      Math.min(...latitudes),
-    ];
-
-    const samePoint = ne[0] === sw[0] && ne[1] === sw[1];
-    if (samePoint) {
-      cameraRef.current.setCamera({
-        centerCoordinate: ne,
-        zoomLevel: 14,
-        animationDuration: 700,
-      });
-      return;
-    }
-
-    cameraRef.current.setCamera({
-      centerCoordinate: cameraCenterCoordinate,
-      zoomLevel: 10,
-      animationDuration: 250,
-    });
-
-    const timeoutId = setTimeout(() => {
-      cameraRef.current?.fitBounds(ne, sw, [48, 48, 48, 48], 900);
-    }, 260);
-
-    return () => clearTimeout(timeoutId);
-  }, [shops, cameraCenterCoordinate]);
+    return () => {
+      if (cameraFitTimeoutRef.current) {
+        clearTimeout(cameraFitTimeoutRef.current);
+        cameraFitTimeoutRef.current = null;
+      }
+    };
+  }, [shops, lastCoords, cameraCenterCoordinate, radiusMeters]);
 
   return (
     <View className="flex-1">
@@ -1018,55 +1052,8 @@ out center tags;
           </Text>
         </View>
 
-        <View className="px-5 mb-4">
-          <View className="bg-white/90 rounded-full p-1 flex-row">
-            <TouchableOpacity
-              onPress={() => setActiveTab("shops")}
-              className={`flex-1 py-2 rounded-full items-center ${
-                activeTab === "shops" ? "bg-[#5F7A4B]" : "bg-transparent"
-              }`}
-            >
-              <Text
-                className={`text-sm font-semibold ${
-                  activeTab === "shops" ? "text-white" : "text-[#1F2937]"
-                }`}
-              >
-                Shops
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setActiveTab("products")}
-              className={`flex-1 py-2 rounded-full items-center ${
-                activeTab === "products" ? "bg-[#5F7A4B]" : "bg-transparent"
-              }`}
-            >
-              <Text
-                className={`text-sm font-semibold ${
-                  activeTab === "products" ? "text-white" : "text-[#1F2937]"
-                }`}
-              >
-                Products
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View className="px-5 mb-4">
-          {activeTab === "products" ? <View className="bg-white/90 flex-row items-center px-4 rounded-2xl shadow-sm">
-            <Search size={18} color="#9CA3AF" />
-            <TextInput
-              placeholder={
-                "Search products"
-              }
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 ml-3 text-base text-[#1F2937]"
-            />
-          </View>
-           : null}
-        </View>
-
-        <View className="flex-1 bg-[#E8E6DE]/95 rounded-t-[35px] px-5 pt-8 pb-6">
-          {initialLoading || (activeTab === "shops" && loadingLocation) ? (
+        <View className="flex-1 bg-[#F2F1ED] rounded-t-[35px] px-5 pt-8 pb-6">
+          {initialLoading || loadingLocation ? (
             <View className="flex-1 items-center justify-center">
               <ActivityIndicator size="large" color="#5F7A4B" />
               <Text className="text-sm text-gray-500 mt-3">
@@ -1077,8 +1064,8 @@ out center tags;
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 120 }}
+              className="rounded-2xl"
             >
-            {activeTab === "shops" ? (
               <>
                 <View className="flex-row items-center justify-between mb-4">
                   <Text className="text-xl font-bold text-[#1F2937]">
@@ -1155,7 +1142,7 @@ out center tags;
                   </View>
                 ) : (
                   <>
-                    <View className="rounded-2xl overflow-hidden border border-white/60 shadow-sm mb-4">
+                    <View className="relative rounded-2xl overflow-hidden border border-white/60 shadow-sm mb-4">
                       {Platform.OS === "web" ? (
                         <View
                           style={{ height: 240, width: "100%" }}
@@ -1172,6 +1159,7 @@ out center tags;
                           logoEnabled={false}
                           compassEnabled
                           attributionEnabled={false}
+                          onPress={() => setSelectedMapShop(null)}
                         >
                           <Camera
                             ref={cameraRef}
@@ -1185,17 +1173,65 @@ out center tags;
                             <PointAnnotation
                               key={shop.id}
                               id={shop.id}
+                              onSelected={() => setSelectedMapShop(shop)}
                               coordinate={[
                                 shop.location.longitude,
                                 shop.location.latitude,
                               ]}
                             >
-                              <View className="w-3.5 h-3.5 rounded-full bg-[#5F7A4B] border-2 border-white" />
+                              <View
+                                className={`rounded-full border-2 border-white ${
+                                  selectedMapShop?.id === shop.id
+                                    ? "w-5 h-5 bg-[#365237]"
+                                    : "w-3.5 h-3.5 bg-[#5F7A4B]"
+                                }`}
+                              />
                             </PointAnnotation>
                           ))}
                         </MapView>
                       )}
+
+                      {Platform.OS !== "web" && lastCoords ? (
+                        <TouchableOpacity
+                          onPress={focusCameraOnUser}
+                          className="absolute top-3 right-3 bg-white/95 px-3 py-2 rounded-full border border-gray-200 shadow-sm"
+                        >
+                          <View className="flex-row items-center">
+                            <Ionicons name="locate" size={16} color="#1F2937" />
+                            <Text className="ml-2 text-xs font-semibold text-[#1F2937]">
+                              My location
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
+
+                    {selectedMapShop ? (
+                      <View className="bg-white/90 rounded-xl px-4 py-3 mb-4 border border-white/70">
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-1 pr-3">
+                            <Text className="text-xs text-gray-500 mb-1">
+                              Selected point
+                            </Text>
+                            <Text className="text-sm font-semibold text-[#1F2937]">
+                              {selectedMapShop.name}
+                            </Text>
+                          </View>
+
+                          <TouchableOpacity
+                            onPress={() => {
+                              setSelectedShop(selectedMapShop);
+                              setMapModalVisible(true);
+                            }}
+                            className="bg-[#5F7A4B] px-4 py-2 rounded-full"
+                          >
+                            <Text className="text-xs text-white font-semibold">
+                              Open Maps
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : null}
 
                     <View className="mb-6">
                       <Text className="text-sm font-semibold text-[#1F2937] mb-2">
@@ -1417,58 +1453,6 @@ out center tags;
                   </>
                 )}
               </>
-            ) : (
-              <>
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-xl font-bold text-[#1F2937]">
-                    Popular Products
-                  </Text>
-                  <TouchableOpacity className="flex-row items-center">
-                    <Text className="text-[#5F7A4B]">See all</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View className="flex-row flex-wrap justify-between">
-                  {PRODUCTS.map((product) => (
-                    <View
-                      key={product.id}
-                      className="w-[48%] bg-white/95 rounded-2xl p-4 mb-4 shadow-sm"
-                    >
-                      <View className="bg-[#EEF3E7] h-24 rounded-xl mb-3 items-center justify-center">
-                        <ShoppingBag size={28} color="#5F7A4B" />
-                      </View>
-                      <Text className="text-sm font-semibold text-[#1F2937]">
-                        {product.name}
-                      </Text>
-                      <Text className="text-xs text-gray-500 mt-1">
-                        {product.unit}
-                      </Text>
-                      <View className="flex-row items-center mt-2">
-                        <Star size={12} color="#F59E0B" />
-                        <Text className="ml-1 text-xs text-[#1F2937]">
-                          {product.rating}
-                        </Text>
-                        <View className="ml-2 bg-[#5F7A4B]/10 px-2 py-0.5 rounded-full">
-                          <Text className="text-[10px] text-[#5F7A4B]">
-                            {product.badge}
-                          </Text>
-                        </View>
-                      </View>
-                      <View className="flex-row items-center justify-between mt-3">
-                        <Text className="text-base font-bold text-[#1F2937]">
-                          ${product.price}
-                        </Text>
-                        <TouchableOpacity className="bg-[#5F7A4B] px-3 py-1.5 rounded-full">
-                          <Text className="text-xs text-white font-semibold">
-                            Buy
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </>
-            )}
             </ScrollView>
           )}
         </View>
