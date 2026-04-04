@@ -16,9 +16,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
     bundleIdentifier: "com.marco.aigardener",
     googleServicesFile: "./googleService-Info.plist",
-    config: {
-      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
-    },
+    // config: {
+    //   googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+    // },
   },
   android: {
     adaptiveIcon: {
@@ -32,11 +32,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     softwareKeyboardLayoutMode: "pan",
     package: "com.marco.aigardener",
     googleServicesFile: "./google-services.json",
-    config: {
-      googleMaps: {
-        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
-      },
-    },
+    // config: {
+    //   googleMaps: {
+    //     apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+    //   },
+    // },
   },
   web: {
     output: "static",
@@ -68,6 +68,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-speech-recognition",
+    "@maplibre/maplibre-react-native"
   ],
   experiments: {
     typedRoutes: true,

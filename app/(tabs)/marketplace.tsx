@@ -3,10 +3,19 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { MapPin, Search, ShoppingBag, Star, Leaf } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Camera,
+  type CameraRef,
+  Logger,
+  MapView,
+  PointAnnotation,
+  UserLocation,
+} from "@maplibre/maplibre-react-native";
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   Modal,
   ScrollView,
   StatusBar,
@@ -15,7 +24,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const DEFAULT_REGION = {
@@ -201,6 +209,7 @@ export default function MarketplaceScreen() {
   const [sortMode, setSortMode] = useState<"relevance" | "distance">(
     "relevance",
   );
+  const cameraRef = useRef<CameraRef | null>(null);
   const osmCacheRef = useRef<Map<string, { timestamp: number; elements: OSMElement[] }>>(
     new Map(),
   );
@@ -298,6 +307,38 @@ export default function MarketplaceScreen() {
       }
     } catch (error) {
       console.error("Open maps error:", error);
+    }
+  };
+
+  const getLocationErrorMessage = (error: unknown) => {
+    const rawMessage =
+      error instanceof Error ? error.message : String(error || "");
+    const normalized = rawMessage.toLowerCase();
+
+    if (normalized.includes("current location is unavailable")) {
+      return "Current location is unavailable right now. Move to an open area or turn on high-accuracy GPS, then refresh.";
+    }
+
+    return "We couldn't access your location right now. Please try refreshing again.";
+  };
+
+  const getPositionWithFallback = async () => {
+    try {
+      return await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        mayShowUserSettingsDialog: true,
+      });
+    } catch (error) {
+      const lastKnown = await Location.getLastKnownPositionAsync({
+        maxAge: 15 * 60 * 1000,
+        requiredAccuracy: 500,
+      });
+
+      if (lastKnown) {
+        return lastKnown;
+      }
+
+      throw error;
     }
   };
 
@@ -743,6 +784,7 @@ out center tags;
       const currentPermission = await Location.getForegroundPermissionsAsync();
       if (!currentPermission.granted) {
         setLocationDenied(true);
+        setSearchErrorMessage(null);
         return;
       }
 
@@ -750,15 +792,14 @@ out center tags;
       if (!servicesEnabled) {
         console.warn("Location services are disabled :(");
         setGpsDisabled(true);
+        setSearchErrorMessage(null);
         return;
       }
 
       setLocationDenied(false);
       setGpsDisabled(false);
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const position = await getPositionWithFallback();
 
       const nextRegion = {
         latitude: position.coords.latitude,
@@ -777,8 +818,10 @@ out center tags;
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       });
+      setSearchErrorMessage(null);
     } catch (error) {
       console.error("Location error:", error);
+      setSearchErrorMessage(getLocationErrorMessage(error));
     } finally {
       setLoadingLocation(false);
       setInitialLoading(false);
@@ -792,6 +835,7 @@ out center tags;
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) {
         setLocationDenied(true);
+        setSearchErrorMessage(null);
         return;
       }
 
@@ -800,14 +844,13 @@ out center tags;
       const servicesEnabled = await Location.hasServicesEnabledAsync();
       if (!servicesEnabled) {
         setGpsDisabled(true);
+        setSearchErrorMessage(null);
         return;
       }
 
       setGpsDisabled(false);
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const position = await getPositionWithFallback();
       const nextRegion = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -825,8 +868,10 @@ out center tags;
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       });
+      setSearchErrorMessage(null);
     } catch (error) {
       console.error("Refresh location error:", error);
+      setSearchErrorMessage(getLocationErrorMessage(error));
     } finally {
       setLoadingLocation(false);
     }
@@ -834,6 +879,21 @@ out center tags;
 
   useEffect(() => {
     loadLocationAsync();
+  }, []);
+
+  useEffect(() => {
+    Logger.setLogCallback((log) => {
+      if (
+        log.tag === "Mbgl-HttpRequest" &&
+        log.message.startsWith(
+          "Request failed due to a permanent error: Canceled",
+        )
+      ) {
+        return true;
+      }
+
+      return false;
+    });
   }, []);
 
   const isLocationModal =
@@ -879,12 +939,65 @@ out center tags;
   const selectedCategoryResults = selectedResultCategory
     ? getSortedCategoryShops(selectedResultCategory.id)
     : [];
+  const cameraCenterCoordinate = useMemo<[number, number]>(
+    () => [region.longitude, region.latitude],
+    [region.longitude, region.latitude],
+  );
   const totalFilteredResults = SHOP_CATEGORIES.reduce((total, category) => {
     if (!activeCategories[category.id]) {
       return total;
     }
     return total + (shopsByCategory[category.id]?.length ?? 0);
   }, 0);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || !cameraRef.current) {
+      return;
+    }
+
+    if (shops.length === 0) {
+      cameraRef.current.setCamera({
+        centerCoordinate: cameraCenterCoordinate,
+        zoomLevel: 11,
+        animationDuration: 700,
+      });
+      return;
+    }
+
+    const longitudes = shops.map((shop) => shop.location.longitude);
+    const latitudes = shops.map((shop) => shop.location.latitude);
+
+    const ne: [number, number] = [
+      Math.max(...longitudes),
+      Math.max(...latitudes),
+    ];
+    const sw: [number, number] = [
+      Math.min(...longitudes),
+      Math.min(...latitudes),
+    ];
+
+    const samePoint = ne[0] === sw[0] && ne[1] === sw[1];
+    if (samePoint) {
+      cameraRef.current.setCamera({
+        centerCoordinate: ne,
+        zoomLevel: 14,
+        animationDuration: 700,
+      });
+      return;
+    }
+
+    cameraRef.current.setCamera({
+      centerCoordinate: cameraCenterCoordinate,
+      zoomLevel: 10,
+      animationDuration: 250,
+    });
+
+    const timeoutId = setTimeout(() => {
+      cameraRef.current?.fitBounds(ne, sw, [48, 48, 48, 48], 900);
+    }, 260);
+
+    return () => clearTimeout(timeoutId);
+  }, [shops, cameraCenterCoordinate]);
 
   return (
     <View className="flex-1">
@@ -1043,21 +1156,45 @@ out center tags;
                 ) : (
                   <>
                     <View className="rounded-2xl overflow-hidden border border-white/60 shadow-sm mb-4">
-                      <MapView
-                        style={{ height: 240, width: "100%" }}
-                        region={region}
-                        showsUserLocation
-                        showsMyLocationButton
-                      >
-                        {shops.map((shop: NearbyShop) => (
-                          <Marker
-                            key={shop.id}
-                            coordinate={shop.location}
-                            title={shop.name}
-                            description={shop.vicinity || "Nearby shop"}
+                      {Platform.OS === "web" ? (
+                        <View
+                          style={{ height: 240, width: "100%" }}
+                          className="items-center justify-center bg-[#EEF3E7]"
+                        >
+                          <Text className="text-sm text-gray-500 text-center px-4">
+                            Map preview is available on Android/iOS builds.
+                          </Text>
+                        </View>
+                      ) : (
+                        <MapView
+                          style={{ height: 240, width: "100%" }}
+                          mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+                          logoEnabled={false}
+                          compassEnabled
+                          attributionEnabled={false}
+                        >
+                          <Camera
+                            ref={cameraRef}
+                            centerCoordinate={cameraCenterCoordinate}
+                            zoomLevel={12}
+                            animationDuration={350}
                           />
-                        ))}
-                      </MapView>
+                          <UserLocation visible />
+
+                          {shops.map((shop: NearbyShop) => (
+                            <PointAnnotation
+                              key={shop.id}
+                              id={shop.id}
+                              coordinate={[
+                                shop.location.longitude,
+                                shop.location.latitude,
+                              ]}
+                            >
+                              <View className="w-3.5 h-3.5 rounded-full bg-[#5F7A4B] border-2 border-white" />
+                            </PointAnnotation>
+                          ))}
+                        </MapView>
+                      )}
                     </View>
 
                     <View className="mb-6">
