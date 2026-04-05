@@ -1070,7 +1070,7 @@ export default function AiHelperScreen() {
                 onPress={handleDeleteFromActions}
                 className="bg-[#ef4444] w-full py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-base">{t("plantCard.delete")}</Text>
+                <Text className="text-white text-center font-bold text-base">{t("ai.chat.delete")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1112,7 +1112,7 @@ export default function AiHelperScreen() {
                 onPress={confirmDeleteConversation}
                 className="bg-[#ef4444] w-full py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-base">{t("plantCard.yesDelete")}</Text>
+                <Text className="text-white text-center font-bold text-base">{t("ai.chat.confirmDeleteConversation")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

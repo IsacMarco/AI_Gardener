@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { MapPin, ShoppingBag, Star, Leaf } from "lucide-react-native";
@@ -128,6 +129,20 @@ const MIN_STRICT_RESULTS = 4;
 const LANDSCAPING_CONFIDENCE_THRESHOLD = 6;
 const OSM_REQUEST_TIMEOUT_MS = 9000;
 const OSM_CACHE_TTL_MS = 5 * 60 * 1000;
+const MARKETPLACE_CACHE_KEY = "marketplace_cached_results_v1";
+const LOCATION_REFETCH_THRESHOLD_METERS = 500;
+const LOCATION_REQUEST_TIMEOUT_MS = 7000;
+const FAST_LAST_KNOWN_MAX_AGE_MS = 60 * 1000;
+const FALLBACK_LAST_KNOWN_MAX_AGE_MS = 15 * 60 * 1000;
+
+type MarketplaceCachePayload = {
+  lastKnownLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  shopsByCategory: Record<string, NearbyShop[]>;
+  cachedAt: number;
+};
 
 export default function MarketplaceScreen() {
   const { t } = useI18n();
@@ -182,6 +197,13 @@ export default function MarketplaceScreen() {
   const osmCacheRef = useRef<Map<string, { timestamp: number; elements: OSMElement[] }>>(
     new Map(),
   );
+  const marketplaceCacheRef = useRef<MarketplaceCachePayload | null>(null);
+
+  const createEmptyCategoryMap = () =>
+    SHOP_CATEGORIES.reduce<Record<string, NearbyShop[]>>((acc, category) => {
+      acc[category.id] = [];
+      return acc;
+    }, {});
 
   const getDistanceKm = (
     from: { latitude: number; longitude: number },
@@ -205,6 +227,92 @@ export default function MarketplaceScreen() {
     setModalTitle(title);
     setModalMessage(message);
     setModalVisible(true);
+  };
+
+  const clearLoadedShops = () => {
+    const emptyByCategory = createEmptyCategoryMap();
+    setAllShopsByCategory(emptyByCategory);
+    setShopsByCategory(emptyByCategory);
+    setShops([]);
+    setNoResults(false);
+  };
+
+  const normalizeShopsByCategory = (
+    raw: unknown,
+  ): Record<string, NearbyShop[]> => {
+    const source = raw && typeof raw === "object" ? raw : {};
+    return SHOP_CATEGORIES.reduce<Record<string, NearbyShop[]>>((acc, category) => {
+      const maybeArray = (source as Record<string, unknown>)[category.id];
+      acc[category.id] = Array.isArray(maybeArray)
+        ? (maybeArray as NearbyShop[])
+        : [];
+      return acc;
+    }, {});
+  };
+
+  const readMarketplaceCache = async () => {
+    if (marketplaceCacheRef.current) {
+      return marketplaceCacheRef.current;
+    }
+
+    try {
+      const raw = await AsyncStorage.getItem(MARKETPLACE_CACHE_KEY);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as Partial<MarketplaceCachePayload>;
+      const latitude = parsed?.lastKnownLocation?.latitude;
+      const longitude = parsed?.lastKnownLocation?.longitude;
+
+      if (typeof latitude !== "number" || typeof longitude !== "number") {
+        return null;
+      }
+
+      const payload: MarketplaceCachePayload = {
+        lastKnownLocation: {
+          latitude,
+          longitude,
+        },
+        shopsByCategory: normalizeShopsByCategory(parsed.shopsByCategory),
+        cachedAt:
+          typeof parsed.cachedAt === "number" ? parsed.cachedAt : Date.now(),
+      };
+
+      marketplaceCacheRef.current = payload;
+      return payload;
+    } catch (error) {
+      console.warn("Failed to read marketplace cache:", error);
+      return null;
+    }
+  };
+
+  const persistMarketplaceCache = async (
+    coords: { latitude: number; longitude: number },
+    byCategory: Record<string, NearbyShop[]>,
+  ) => {
+    const payload: MarketplaceCachePayload = {
+      lastKnownLocation: {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      },
+      shopsByCategory: byCategory,
+      cachedAt: Date.now(),
+    };
+
+    marketplaceCacheRef.current = payload;
+
+    try {
+      await AsyncStorage.setItem(MARKETPLACE_CACHE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      console.warn("Failed to persist marketplace cache:", error);
+    }
+  };
+
+  const applyLoadedShops = (nextByCategory: Record<string, NearbyShop[]>) => {
+    setAllShopsByCategory(nextByCategory);
+    applyRadiusFilter(nextByCategory, radiusMeters);
+    setSearchErrorMessage(null);
   };
 
   const getCategoryLabel = (categoryId: string) => {
@@ -381,18 +489,47 @@ export default function MarketplaceScreen() {
     return t("marketplace.locationAccessError");
   };
 
-  const getPositionWithFallback = async () => {
-    try {
-      return await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        mayShowUserSettingsDialog: true,
-      });
-    } catch (error) {
-      const lastKnown = await Location.getLastKnownPositionAsync({
-        maxAge: 15 * 60 * 1000,
-        requiredAccuracy: 500,
-      });
+  const getCurrentPositionWithTimeout = async () => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error("Location request timed out"));
+      }, LOCATION_REQUEST_TIMEOUT_MS);
+    });
 
+    try {
+      return (await Promise.race([
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          mayShowUserSettingsDialog: true,
+        }),
+        timeoutPromise,
+      ])) as Location.LocationObject;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  const getPositionWithFallback = async (
+    strategy: "fresh" | "fast" = "fresh",
+  ) => {
+    const lastKnown = await Location.getLastKnownPositionAsync({
+      maxAge:
+        strategy === "fast"
+          ? FAST_LAST_KNOWN_MAX_AGE_MS
+          : FALLBACK_LAST_KNOWN_MAX_AGE_MS,
+      requiredAccuracy: strategy === "fast" ? 120 : 500,
+    });
+
+    if (strategy === "fast" && lastKnown) {
+      return lastKnown;
+    }
+
+    try {
+      return await getCurrentPositionWithTimeout();
+    } catch (error) {
       if (lastKnown) {
         return lastKnown;
       }
@@ -752,6 +889,18 @@ out center tags;
     setSearchErrorMessage(null);
     try {
       setNoResults(false);
+
+      const cached = await readMarketplaceCache();
+      if (cached) {
+        const distanceMeters =
+          getDistanceKm(coords, cached.lastKnownLocation) * 1000;
+
+        if (distanceMeters <= LOCATION_REFETCH_THRESHOLD_METERS) {
+          applyLoadedShops(cached.shopsByCategory);
+          return;
+        }
+      }
+
       const elements = await fetchNearbyShopsFromOsm(coords, MAX_RADIUS);
 
       const nextByCategory = SHOP_CATEGORIES.reduce<Record<string, NearbyShop[]>>(
@@ -823,9 +972,8 @@ out center tags;
         );
       });
 
-      setAllShopsByCategory(nextByCategory);
-      applyRadiusFilter(nextByCategory, radiusMeters);
-      setSearchErrorMessage(null);
+      applyLoadedShops(nextByCategory);
+      await persistMarketplaceCache(coords, nextByCategory);
     } catch (error) {
       console.error("Nearby shops (OSM) error:", error);
       setSearchErrorMessage(
@@ -843,6 +991,7 @@ out center tags;
       const currentPermission = await Location.getForegroundPermissionsAsync();
       if (!currentPermission.granted) {
         setLocationDenied(true);
+        clearLoadedShops();
         setSearchErrorMessage(null);
         return;
       }
@@ -851,6 +1000,7 @@ out center tags;
       if (!servicesEnabled) {
         console.warn("Location services are disabled :(");
         setGpsDisabled(true);
+        clearLoadedShops();
         setSearchErrorMessage(null);
         return;
       }
@@ -858,7 +1008,7 @@ out center tags;
       setLocationDenied(false);
       setGpsDisabled(false);
 
-      const position = await getPositionWithFallback();
+      const position = await getPositionWithFallback("fresh");
 
       const nextRegion = {
         latitude: position.coords.latitude,
@@ -891,9 +1041,13 @@ out center tags;
   const handleRefresh = async () => {
     setLoadingLocation(true);
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
+      const currentPermission = await Location.getForegroundPermissionsAsync();
+      const permission = currentPermission.granted
+        ? currentPermission
+        : await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) {
         setLocationDenied(true);
+        clearLoadedShops();
         setSearchErrorMessage(null);
         return;
       }
@@ -903,13 +1057,14 @@ out center tags;
       const servicesEnabled = await Location.hasServicesEnabledAsync();
       if (!servicesEnabled) {
         setGpsDisabled(true);
+        clearLoadedShops();
         setSearchErrorMessage(null);
         return;
       }
 
       setGpsDisabled(false);
 
-      const position = await getPositionWithFallback();
+      const position = await getPositionWithFallback("fast");
       const nextRegion = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
