@@ -21,9 +21,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
+import { useI18n } from "../../context/I18nContext";
 const { height } = Dimensions.get("window");
 export default function PlantDetailsScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ id?: string | string[]; from?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const from = Array.isArray(params.from) ? params.from[0] : params.from;
@@ -49,9 +51,9 @@ export default function PlantDetailsScreen() {
   if (!plant) {
     return (
       <View className="flex-1 justify-center items-center bg-[#f5f5f5]">
-        <Text className="text-gray-500">Plant not found.</Text>
+        <Text className="text-gray-500">{t("plant.details.notFound")}</Text>
         <TouchableOpacity onPress={goBackToSource} className="mt-4">
-          <Text className="text-[#5F7A4B] font-bold">Go Back</Text>
+          <Text className="text-[#5F7A4B] font-bold">{t("plant.details.goBack")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -129,7 +131,7 @@ export default function PlantDetailsScreen() {
               {plant.name}
             </Text>
             <Text className="text-lg text-gray-500 italic font-medium">
-              {plant.species || "Unknown Species"}
+              {plant.species || t("plant.details.unknownSpecies")}
             </Text>
           </View>
           <View className="flex-row flex-wrap justify-between mb-8">
@@ -139,14 +141,14 @@ export default function PlantDetailsScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-xs text-gray-400 font-bold uppercase">
-                  Location
+                  {t("plant.details.location")}
                 </Text>
                 <Text
                   className="text-gray-800 font-semibold text-sm"
                   numberOfLines={2}
                   ellipsizeMode="tail"
                 >
-                  {plant.location || "Not specified"}
+                  {plant.location || t("plant.details.notSpecified")}
                 </Text>
               </View>
             </View>
@@ -158,10 +160,12 @@ export default function PlantDetailsScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-xs text-gray-400 font-bold uppercase">
-                    Frequency
+                    {t("plant.details.frequency")}
                   </Text>
                   <Text className="text-gray-800 font-semibold text-sm">
-                    Every {plant.watering?.frequency || "?"} days
+                    {t("plant.details.everyDays", {
+                      days: plant.watering?.frequency || "?",
+                    })}
                   </Text>
                 </View>
               </View>
@@ -174,10 +178,10 @@ export default function PlantDetailsScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-xs text-gray-400 font-bold uppercase">
-                    Time
+                    {t("plant.details.time")}
                   </Text>
                   <Text className="text-gray-800 font-semibold text-sm">
-                    {plant.watering?.time || "Anytime"}
+                    {plant.watering?.time || t("plant.details.anytime")}
                   </Text>
                 </View>
               </View>
@@ -197,14 +201,14 @@ export default function PlantDetailsScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-xs text-gray-400 font-bold uppercase">
-                  Alerts
+                  {t("plant.details.alerts")}
                 </Text>
                 <Text
                   className={`font-semibold text-sm ${
                     isWateringEnabled ? "text-green-700" : "text-gray-400"
                   }`}
                 >
-                  {isWateringEnabled ? "On" : "Off"}
+                  {isWateringEnabled ? t("plant.details.on") : t("plant.details.off")}
                 </Text>
               </View>
             </View>
@@ -292,11 +296,10 @@ export default function PlantDetailsScreen() {
               <Trash2 size={32} color="#ef4444" />
             </View>
             <Text className="text-xl font-bold text-gray-800 mb-2">
-              Delete Plant?
+              {t("plant.details.deleteQuestion")}
             </Text>
             <Text className="text-gray-500 text-center mb-6 px-2">
-              Are you sure you want to remove{" "}
-              <Text className="font-bold">{plant.name}</Text> from your garden?
+              {t("plant.details.deleteMsg", { name: plant.name })}
             </Text>
 
             <View className="flex-row gap-4 w-full">
@@ -305,14 +308,14 @@ export default function PlantDetailsScreen() {
                 className="flex-1 bg-gray-200 py-3 rounded-xl"
               >
                 <Text className="text-gray-700 font-bold text-center">
-                  Cancel
+                  {t("account.cancel")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleDelete}
                 className="flex-1 bg-red-500 py-3 rounded-xl"
               >
-                <Text className="text-white font-bold text-center">Delete</Text>
+                <Text className="text-white font-bold text-center">{t("plantCard.delete")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -331,18 +334,17 @@ export default function PlantDetailsScreen() {
               <Ionicons name="warning-outline" size={32} color="#f59e0b" />
             </View>
             <Text className="text-xl font-bold text-gray-800 mb-2">
-              Delete Failed
+              {t("plant.details.deleteFailed")}
             </Text>
             <Text className="text-gray-500 text-center mb-6 px-2">
-              We couldn&apos;t delete <Text className="font-bold">{plant.name}</Text>.
-              Please try again.
+              {t("plant.details.deleteFailedMsg", { name: plant.name })}
             </Text>
 
             <TouchableOpacity
               onPress={() => setShowDeleteErrorModal(false)}
               className="w-full bg-[#5F7A4B] py-3 rounded-xl"
             >
-              <Text className="text-white font-bold text-center">OK</Text>
+              <Text className="text-white font-bold text-center">{t("common.ok")}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -33,6 +33,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
+import { useI18n } from "../../context/I18nContext";
 
 // Import Notification Services
 import {
@@ -42,6 +43,7 @@ import {
 
 export default function EditPlant() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams();
   const { id } = params;
 
@@ -155,7 +157,7 @@ export default function EditPlant() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
 
     if (permission.status !== "granted") {
-      alert("Camera permission is required!");
+      alert(t("addPlant.cameraPermission"));
       return;
     }
 
@@ -226,7 +228,7 @@ export default function EditPlant() {
 
       const normalizedId = Array.isArray(id) ? id[0] : id;
       if (!normalizedId) {
-        alert("Plant not found");
+        alert(t("plant.details.notFound"));
         return;
       }
       const result = await updatePlant(normalizedId, updatePayload);
@@ -234,11 +236,11 @@ export default function EditPlant() {
       if (result.success) {
         setShowSuccessModal(true);
       } else {
-        alert("Update failed");
+        alert(t("addPlant.saveFailed"));
       }
     } catch (error) {
       console.error("Error updating plant:", error);
-      alert("Server connection error");
+      alert(t("addPlant.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -260,9 +262,9 @@ export default function EditPlant() {
             <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-4">
               <Check size={32} color="#5F7A4B" />
             </View>
-            <Text className="text-xl font-bold mb-2">Plant Updated!</Text>
+            <Text className="text-xl font-bold mb-2">{t("editPlant.updated")}</Text>
             <Text className="text-gray-500 mb-6 text-center">
-              Your changes have been saved successfully.
+              {t("editPlant.updatedMsg")}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -271,7 +273,7 @@ export default function EditPlant() {
               }}
               className="bg-[#5F7A4B] w-full py-3 rounded-xl"
             >
-              <Text className="text-white text-center font-bold">OK</Text>
+              <Text className="text-white text-center font-bold">{t("common.ok")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -291,12 +293,12 @@ export default function EditPlant() {
             </View>
 
             <Text className="text-xl font-bold mb-2 text-[#1F2937] text-center">
-              Enable Reminders?
+              {t("editPlant.enableReminders")}
             </Text>
             <Text className="text-gray-500 mb-6 text-center leading-5">
-              To help your{" "}
-              <Text className="font-bold">{plantName || "plant"}</Text> thrive,
-              we need permission to send you watering notifications.
+              {t("editPlant.enableRemindersMsg", {
+                name: plantName || t("addPlant.name").toLowerCase(),
+              })}
             </Text>
 
             <TouchableOpacity
@@ -304,7 +306,7 @@ export default function EditPlant() {
               className="bg-[#5F7A4B] w-full py-3.5 rounded-xl mb-3 shadow-sm"
             >
               <Text className="text-white text-center font-bold text-lg">
-                Allow Notifications
+                {t("editPlant.allowNotifications")}
               </Text>
             </TouchableOpacity>
 
@@ -312,7 +314,7 @@ export default function EditPlant() {
               onPress={() => setShowPermissionModal(false)}
               className="py-2"
             >
-              <Text className="text-gray-400 font-medium">Maybe Later</Text>
+              <Text className="text-gray-400 font-medium">{t("editPlant.maybeLater")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -332,11 +334,10 @@ export default function EditPlant() {
             </View>
 
             <Text className="text-xl font-bold mb-2 text-[#1F2937] text-center">
-              Notifications Disabled
+              {t("editPlant.notificationsDisabled")}
             </Text>
             <Text className="text-gray-500 mb-6 text-center leading-5">
-              You have blocked notifications for this app. Please go to Settings
-              to enable them manually.
+              {t("editPlant.notificationsDisabledMsg")}
             </Text>
 
             <TouchableOpacity
@@ -348,7 +349,7 @@ export default function EditPlant() {
             >
               <Settings size={20} color="white" className="mr-2" />
               <Text className="text-white text-center font-bold text-lg">
-                Open Settings
+                {t("account.openSettings")}
               </Text>
             </TouchableOpacity>
 
@@ -356,7 +357,7 @@ export default function EditPlant() {
               onPress={() => setShowSettingsModal(false)}
               className="py-2"
             >
-              <Text className="text-gray-400 font-medium">Cancel</Text>
+              <Text className="text-gray-400 font-medium">{t("account.cancel")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -375,10 +376,10 @@ export default function EditPlant() {
               <Camera size={32} color="#5F7A4B" />
             </View>
             <Text className="text-xl font-bold mb-4 text-[#1F2937]">
-              Change Photo
+              {t("editPlant.changePhoto")}
             </Text>
             <Text className="text-gray-500 text-center mb-8 px-2 text-base leading-6">
-              Select Image From:
+              {t("editPlant.selectFrom")}
             </Text>
             <View className="w-full gap-3">
               <TouchableOpacity
@@ -387,7 +388,7 @@ export default function EditPlant() {
               >
                 <Camera size={20} color="white" className="mr-2" />
                 <Text className="text-white font-bold text-lg ml-2">
-                  Take Photo
+                  {t("addPlant.takePhoto")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -396,7 +397,7 @@ export default function EditPlant() {
               >
                 <ImageIcon size={20} color="white" className="mr-2" />
                 <Text className="text-white font-bold text-lg ml-2">
-                  Choose from Gallery
+                  {t("addPlant.chooseGallery")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -404,7 +405,7 @@ export default function EditPlant() {
               onPress={() => setIsSelectionModalVisible(false)}
               className="py-2 mt-6"
             >
-              <Text className="text-gray-400">Cancel</Text>
+              <Text className="text-gray-400">{t("account.cancel")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -424,9 +425,9 @@ export default function EditPlant() {
 
               <View className="flex-1 px-3">
                 <Text className="text-white/80 text-xs font-medium tracking-wide uppercase">
-                  My Garden
+                  {t("addPlant.fromGarden")}
                 </Text>
-                <Text className="text-white text-2xl font-bold">Edit Plant</Text>
+                <Text className="text-white text-2xl font-bold">{t("editPlant.title")}</Text>
               </View>
 
               <View className="w-10 h-10" />
@@ -464,37 +465,37 @@ export default function EditPlant() {
 
               <View className="bg-white p-4 rounded-2xl shadow-sm mb-4">
                 <Text className="text-gray-400 font-bold text-xs uppercase mb-1 ml-1">
-                  Plant Name
+                  {t("addPlant.name")}
                 </Text>
                 <TextInput
                   value={plantName}
                   onChangeText={setPlantName}
                   className="text-lg text-[#1F2937] border-b border-gray-100 pb-2"
-                  placeholder="e.g. My Monstera"
+                  placeholder={t("addPlant.namePlaceholder")}
                 />
               </View>
 
               <View className="bg-white p-4 rounded-2xl shadow-sm mb-4">
                 <Text className="text-gray-400 font-bold text-xs uppercase mb-1 ml-1">
-                  Species
+                  {t("addPlant.species")}
                 </Text>
                 <TextInput
                   value={species}
                   onChangeText={setSpecies}
                   className="text-lg text-[#1F2937] border-b border-gray-100 pb-2"
-                  placeholder="e.g. Monstera deliciosa"
+                  placeholder={t("addPlant.speciesPlaceholder")}
                 />
               </View>
 
               <View className="bg-white p-4 rounded-2xl shadow-sm mb-6">
                 <Text className="text-gray-400 font-bold text-xs uppercase mb-1 ml-1">
-                  Location
+                  {t("addPlant.location")}
                 </Text>
                 <TextInput
                   value={location}
                   onChangeText={setLocation}
                   className="text-lg text-[#1F2937] border-b border-gray-100 pb-2"
-                  placeholder="e.g. Living Room"
+                  placeholder={t("addPlant.locationPlaceholder")}
                 />
               </View>
 
@@ -511,12 +512,12 @@ export default function EditPlant() {
                     </View>
                     <View>
                       <Text className="text-lg font-bold text-[#1F2937]">
-                        Reminders
+                        {t("editPlant.reminders")}
                       </Text>
                       <Text
                         className={`text-xs font-bold ${remindersEnabled ? "text-[#5F7A4B]" : "text-gray-400"}`}
                       >
-                        {remindersEnabled ? "ACTIVE" : "DISABLED"}
+                        {remindersEnabled ? t("editPlant.active") : t("editPlant.disabled")}
                       </Text>
                     </View>
                   </View>
@@ -534,7 +535,7 @@ export default function EditPlant() {
                       <View className="flex-row items-center gap-2">
                         <Calendar size={18} color="#9CA3AF" />
                         <Text className="text-gray-500 font-medium">
-                          Frequency
+                          {t("editPlant.frequency")}
                         </Text>
                       </View>
 
@@ -553,7 +554,7 @@ export default function EditPlant() {
                             {wateringIntervalDays}
                           </Text>
                           <Text className="text-[10px] text-gray-400 uppercase font-bold">
-                            Days
+                            {t("editPlant.days")}
                           </Text>
                         </View>
 
@@ -570,7 +571,7 @@ export default function EditPlant() {
                       <View className="flex-row items-center gap-2">
                         <Clock size={18} color="#9CA3AF" />
                         <Text className="text-gray-500 font-medium">
-                          Preferred Time
+                          {t("editPlant.preferredTime")}
                         </Text>
                       </View>
 
@@ -598,7 +599,7 @@ export default function EditPlant() {
                   <ActivityIndicator color="white" className="mr-2" />
                 )}
                 <Text className="text-white font-bold text-lg">
-                  Save Changes
+                  {t("editPlant.saveChanges")}
                 </Text>
               </TouchableOpacity>
             </View>

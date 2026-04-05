@@ -4,9 +4,11 @@ import { ChevronRight, MessageCircleMore, ScanSearch } from "lucide-react-native
 import React from "react";
 import { StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useI18n } from "../../context/I18nContext";
 
 export default function AiHelperScreen() {
   const router = useRouter();
+  const { t } = useI18n();
 
   return (
     <View className="flex-1">
@@ -20,10 +22,10 @@ export default function AiHelperScreen() {
       <SafeAreaView className="flex-1 mt-4">
         <View className="items-center mb-8">
           <Text className="text-3xl font-bold text-white tracking-wide">
-            AI Assistant
+            {t("ai.helper.title")}
           </Text>
           <Text className="text-white/85 mt-2 text-base text-center">
-            Choose how you want AI Gardener to help you today.
+            {t("ai.helper.subtitle")}
           </Text>
         </View>
 
@@ -40,10 +42,10 @@ export default function AiHelperScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-[#1F2937] text-lg font-bold">
-                    AI Chat Helper
+                    {t("ai.helper.chatTitle")}
                   </Text>
                   <Text className="text-[#6B7280] mt-1">
-                    Ask questions about plant care, issues, and daily tips.
+                    {t("ai.helper.chatDesc")}
                   </Text>
                 </View>
               </View>
@@ -63,10 +65,10 @@ export default function AiHelperScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-[#1F2937] text-lg font-bold">
-                    Plant Identifier AI
+                    {t("ai.helper.identifierTitle")}
                   </Text>
                   <Text className="text-[#6B7280] mt-1">
-                    Identify plants from photos and get quick health insights.
+                    {t("ai.helper.identifierDesc")}
                   </Text>
                 </View>
               </View>

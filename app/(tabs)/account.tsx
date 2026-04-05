@@ -38,19 +38,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useI18n } from "../../context/I18nContext";
 
 const { height } = Dimensions.get("window");
 const auth = getAuth();
-
-const LANGUAGE_OPTIONS = [
-  { code: "en-US", label: "English", short: "EN" },
-  { code: "ro-RO", label: "Română", short: "RO" },
-  { code: "es-ES", label: "Español", short: "ES" },
-  { code: "fr-FR", label: "Français", short: "FR" },
-  { code: "de-DE", label: "Deutsch", short: "DE" },
-  { code: "it-IT", label: "Italiano", short: "IT" },
-  { code: "pt-BR", label: "Português", short: "PT" },
-];
 
 // 2. Element de lista pentru Setari
 const SettingItem = ({
@@ -71,7 +62,7 @@ const SettingItem = ({
     <View className="w-10 h-10 bg-[#F5F7F4] rounded-full items-center justify-center mr-4">
       {icon}
     </View>
-    <Text className="text-[#1F2937] text-base font-semibold flex-1">
+    <Text numberOfLines={2} className="text-[#1F2937] text-base font-semibold flex-1 pr-2">
       {label}
     </Text>
 
@@ -85,7 +76,7 @@ const SettingItem = ({
       />
     ) : (
       <View className="flex-row items-center">
-        {value && <Text className="text-gray-400 mr-2 text-sm">{value}</Text>}
+        {value && <Text numberOfLines={1} className="text-gray-400 mr-2 text-sm max-w-[110px]">{value}</Text>}
         <ChevronRight size={20} color="#9CA3AF" />
       </View>
     )}
@@ -94,6 +85,7 @@ const SettingItem = ({
 
 const AccountScreen = () => {
   const router = useRouter();
+  const { language, setLanguage, languageOptions, t } = useI18n();
   const { plants } = usePlants();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -101,11 +93,12 @@ const AccountScreen = () => {
     useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState(
-    LANGUAGE_OPTIONS[0],
-  );
   const helpSheetRef = useRef<BottomSheetModal>(null);
   const privacySheetRef = useRef<BottomSheetModal>(null);
+
+  const selectedLanguage =
+    languageOptions.find((option) => option.code === language) ||
+    languageOptions[0];
 
   const supportSheetSnapPoints = useMemo(() => ["80%"], []);
 
@@ -221,13 +214,13 @@ const AccountScreen = () => {
           style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
         />
         <Text className="text-white text-lg font-bold shadow-sm">
-          Please log in to view your account.
+          {t("myPlants.loginRequired")}
         </Text>
         <TouchableOpacity
           onPress={() => router.replace("/")}
           className="mt-6 bg-white px-8 py-3 rounded-full shadow-lg"
         >
-          <Text className="text-[#5F7A4B] font-bold text-lg">Go to Login</Text>
+          <Text className="text-[#5F7A4B] font-bold text-lg">{t("myPlants.goToLogin")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -254,7 +247,7 @@ const AccountScreen = () => {
         <View className="px-5 mt-4 mb-4">
           <View className="items-center mb-6">
             <Text className="text-3xl font-bold text-white tracking-wide">
-              Profile
+              {t("account.profile")}
             </Text>
           </View>
 
@@ -276,7 +269,7 @@ const AccountScreen = () => {
             </View>
 
             <Text className="text-2xl font-bold text-white shadow-sm mb-1">
-              {user.displayName || "Gardener"}
+              {user.displayName || t("account.gardener")}
             </Text>
             <Text className="text-white/80 font-medium text-sm mb-6">
               {user.email}
@@ -290,36 +283,36 @@ const AccountScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             <Text className="text-gray-500 font-bold uppercase text-xs mb-3 ml-2 tracking-wider">
-              Preferences
+              {t("account.preferences")}
             </Text>
 
             <View className="bg-white rounded-3xl px-5 mb-8 shadow-sm">
               <SettingItem
                 icon={<Bell size={20} color="#5F7A4B" />}
-                label="Notifications"
+                label={t("account.notifications")}
                 isSwitch={true}
                 switchValue={notificationsEnabled}
                 onSwitch={handleNotificationsToggle}
               />
               <SettingItem
                 icon={<Globe size={20} color="#3B82F6" />}
-                label="Language"
+                label={t("account.language")}
                 value={selectedLanguage.label}
                 onPress={() => setLanguageModalVisible(true)}
               />
             </View>
             <Text className="text-gray-500 font-bold uppercase text-xs mb-3 ml-2 tracking-wider">
-              Support
+              {t("account.support")}
             </Text>
             <View className="bg-white rounded-3xl px-5 mb-8 shadow-sm">
               <SettingItem
                 icon={<HelpCircle size={20} color="#F59E0B" />}
-                label="Help Center"
+                label={t("account.helpCenter")}
                 onPress={openHelpSheet}
               />
               <SettingItem
                 icon={<ShieldCheck size={20} color="#10B981" />}
-                label="Privacy Policy"
+                label={t("account.privacyPolicy")}
                 onPress={openPrivacySheet}
                 isLast={true}
               />
@@ -331,7 +324,7 @@ const AccountScreen = () => {
             >
               <LogOut size={20} color="#EF4444" />
               <Text className="text-red-500 font-bold text-lg ml-3">
-                Log Out
+                {t("account.logOut")}
               </Text>
             </TouchableOpacity>
 
@@ -356,10 +349,10 @@ const AccountScreen = () => {
             </View>
 
             <Text className="text-xl font-bold text-gray-800 mb-2">
-              Log Out?
+              {t("account.logOutTitle")}
             </Text>
             <Text className="text-gray-500 text-center mb-8 px-4 leading-5">
-              Are you sure you want to leave? Your plants will miss you!
+              {t("account.logOutMsg")}
             </Text>
 
             <View className="flex-row w-full gap-3">
@@ -367,8 +360,8 @@ const AccountScreen = () => {
                 onPress={() => setLogoutModalVisible(false)}
                 className="bg-gray-100 flex-1 py-3.5 rounded-xl"
               >
-                <Text className="text-gray-700 text-center font-bold text-lg">
-                  Stay
+                <Text numberOfLines={2} className="text-gray-700 text-center font-bold text-base px-2">
+                  {t("account.stay")}
                 </Text>
               </TouchableOpacity>
 
@@ -376,8 +369,8 @@ const AccountScreen = () => {
                 onPress={handleFirebaseLogout}
                 className="bg-red-500 flex-1 py-3.5 rounded-xl shadow-md shadow-red-200"
               >
-                <Text className="text-white text-center font-bold text-lg">
-                  Log Out
+                <Text numberOfLines={2} className="text-white text-center font-bold text-base px-2">
+                  {t("account.logOut")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -400,10 +393,10 @@ const AccountScreen = () => {
             </View>
 
             <Text className="text-xl font-bold text-gray-800 mb-2">
-              Notifications Disabled
+              {t("account.notificationsDisabled")}
             </Text>
             <Text className="text-gray-500 text-center mb-8 px-4 leading-5">
-              Enable notifications from system settings to receive watering reminders.
+              {t("account.notificationsDisabledMsg")}
             </Text>
 
             <View className="flex-row w-full gap-3">
@@ -411,8 +404,8 @@ const AccountScreen = () => {
                 onPress={() => setNotificationsModalVisible(false)}
                 className="bg-gray-100 flex-1 py-3.5 rounded-xl"
               >
-                <Text className="text-gray-700 text-center font-bold text-lg">
-                  Cancel
+                <Text numberOfLines={2} className="text-gray-700 text-center font-bold text-base px-2">
+                  {t("account.cancel")}
                 </Text>
               </TouchableOpacity>
 
@@ -423,8 +416,8 @@ const AccountScreen = () => {
                 }}
                 className="bg-[#5F7A4B] flex-1 py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-lg">
-                  Open Settings
+                <Text numberOfLines={2} className="text-white text-center font-bold text-base px-2">
+                  {t("account.openSettings")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -455,18 +448,18 @@ const AccountScreen = () => {
             </View>
 
             <Text className="text-xl font-bold text-gray-800 mb-4 text-center">
-              Select Language
+              {t("account.selectLanguage")}
             </Text>
 
             <View className="gap-2">
-              {LANGUAGE_OPTIONS.map((language) => {
-                const isSelected = selectedLanguage.code === language.code;
+              {languageOptions.map((languageOption) => {
+                const isSelected = selectedLanguage.code === languageOption.code;
 
                 return (
                   <TouchableOpacity
-                    key={language.code}
+                    key={languageOption.code}
                     onPress={() => {
-                      setSelectedLanguage(language);
+                      void setLanguage(languageOption.code);
                       setLanguageModalVisible(false);
                     }}
                     className={`flex-row items-center justify-between p-4 rounded-xl ${
@@ -478,14 +471,14 @@ const AccountScreen = () => {
                         isSelected ? "text-white" : "text-[#1F2937]"
                       }`}
                     >
-                      {language.label}
+                      {languageOption.label}
                     </Text>
                     <Text
                       className={`font-bold ${
                         isSelected ? "text-white/70" : "text-gray-400"
                       }`}
                     >
-                      {language.short}
+                      {languageOption.short}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -497,7 +490,7 @@ const AccountScreen = () => {
               className="mt-4 py-2"
             >
               <Text className="text-gray-400 font-semibold text-center">
-                Cancel
+                {t("account.cancel")}
               </Text>
             </TouchableOpacity>
           </TouchableOpacity>

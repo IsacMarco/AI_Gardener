@@ -38,6 +38,7 @@ import {
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
 import { usePlants } from "../../context/PlantContext";
+import { useI18n } from "../../context/I18nContext";
 
 const genAI = new GoogleGenerativeAI(
   process.env.EXPO_PUBLIC_GEMINI_API_KEY || "",
@@ -87,18 +88,9 @@ type Conversation = {
   messages: Message[];
 };
 
-const LANGUAGE_OPTIONS = [
-  { code: "en-US", label: "English", short: "EN" },
-  { code: "ro-RO", label: "Română", short: "RO" },
-  { code: "es-ES", label: "Español", short: "ES" },
-  { code: "fr-FR", label: "Français", short: "FR" },
-  { code: "de-DE", label: "Deutsch", short: "DE" },
-  { code: "it-IT", label: "Italiano", short: "IT" },
-  { code: "pt-BR", label: "Português", short: "PT" },
-];
-
 export default function AiHelperScreen() {
   const router = useRouter();
+  const { t, language, languageOptions } = useI18n();
   const { plants } = usePlants();
   const scrollViewRef = useRef<ScrollView>(null);
   const conversationListRef = useRef<ScrollView>(null);
@@ -116,7 +108,7 @@ export default function AiHelperScreen() {
       messages: [
         {
           id: "1",
-          text: "Hello! I'm AI Gardener. I hope you have a wonderful day! How can I assist you with your plants today?",
+          text: t("ai.chat.welcome"),
           sender: "ai",
         },
       ],
@@ -137,7 +129,10 @@ export default function AiHelperScreen() {
   });
 
   const [isRecognizing, setIsRecognizing] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGE_OPTIONS[0]);
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    languageOptions.find((option) => option.code === language) ||
+      languageOptions[0],
+  );
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showConversationPicker, setShowConversationPicker] = useState(false);
   const [showRenameConversationModal, setShowRenameConversationModal] =
@@ -155,6 +150,15 @@ export default function AiHelperScreen() {
     conversations[0];
   const messages = activeConversation?.messages || [];
   const conversationListMaxHeight = Math.min(340, Math.max(180, height * 0.4));
+
+  useEffect(() => {
+    const matchedLanguage = languageOptions.find(
+      (option) => option.code === language,
+    );
+    if (matchedLanguage) {
+      setSelectedLanguage(matchedLanguage);
+    }
+  }, [language, languageOptions]);
 
   const plantsContextForPrompt = useMemo(() => {
     const header = "=== USER PLANTS CONTEXT (From App Data) ===\n";
@@ -212,11 +216,11 @@ export default function AiHelperScreen() {
     const newConversationId = `conv-${Date.now()}`;
     const newConversation: Conversation = {
       id: newConversationId,
-      title: `Chat ${conversations.length + 1}`,
+      title: `${t("ai.chat.chat")} ${conversations.length + 1}`,
       messages: [
         {
           id: `${Date.now()}-welcome`,
-          text: "Hello! I'm AI Gardener. I hope you have a wonderful day! How can I assist you with your plants today?",
+          text: t("ai.chat.welcome"),
           sender: "ai",
         },
       ],
@@ -274,8 +278,8 @@ export default function AiHelperScreen() {
       setShowConversationActionsModal(false);
       showModal(
         "info",
-        "Cannot Delete",
-        "You need to keep at least one conversation.",
+        t("ai.chat.cannotDelete"),
+        t("ai.chat.cannotDeleteMsg"),
       );
       return;
     }
@@ -317,7 +321,7 @@ export default function AiHelperScreen() {
     }
 
     if (trimmedTitle.length === 0) {
-      showModal("info", "Invalid Name", "Conversation name cannot be empty.");
+      showModal("info", t("ai.chat.invalidName"), t("ai.chat.invalidNameMsg"));
       return;
     }
 
@@ -351,8 +355,8 @@ export default function AiHelperScreen() {
     console.log("Speech error:", error);
     showModal(
       "voice-error",
-      "No speech detected",
-      "Please try again or use the keyboard to type your message.",
+      t("ai.chat.noSpeech"),
+      t("ai.chat.noSpeechMsg"),
     );
     setIsRecognizing(false);
   });
@@ -374,8 +378,8 @@ export default function AiHelperScreen() {
       if (!permission.granted) {
         showModal(
           "error",
-          "Permission Denied",
-          "Need microphone and speech permissions to use voice.",
+          t("ai.chat.permissionDenied"),
+          t("ai.chat.permissionDeniedMsg"),
           () => Linking.openSettings(),
         );
         return;
@@ -489,16 +493,16 @@ export default function AiHelperScreen() {
     if (Platform.OS === "web") {
       showModal(
         "info",
-        "Not Supported",
-        "Photo picking is not available on web.",
+        t("addPlant.notSupported"),
+        t("addPlant.notSupportedMsg"),
       );
       return;
     }
     Keyboard.dismiss();
     showModal(
       "selection",
-      "Add Photo",
-      "Choose where to upload your plant photo from.",
+      t("addPlant.addPhotoTitle"),
+      t("addPlant.addPhotoMsg"),
     );
   };
 
@@ -524,8 +528,8 @@ export default function AiHelperScreen() {
     } else if (status === "denied") {
       showModal(
         "error",
-        "Camera Access Required",
-        "You have denied camera access. Please enable it in settings.",
+        t("ai.chat.cameraAccessRequired"),
+        t("ai.chat.cameraAccessRequiredMsg"),
         () => Linking.openSettings(),
       );
     } else {
@@ -535,8 +539,8 @@ export default function AiHelperScreen() {
       else
         showModal(
           "error",
-          "Permission Denied",
-          "We cannot take a photo without permission.",
+          t("ai.chat.permissionDenied"),
+          t("ai.chat.photoPermissionMsg"),
         );
     }
   };
@@ -547,8 +551,8 @@ export default function AiHelperScreen() {
     if (permission.status !== "granted") {
       showModal(
         "error",
-        "Permission Needed",
-        "Gallery permission is required.",
+        t("addPlant.permissionNeeded"),
+        t("addPlant.galleryPermission"),
       );
       return;
     }
@@ -648,7 +652,7 @@ export default function AiHelperScreen() {
       const errorMsg: Message = {
         id: Date.now().toString(),
         sender: "ai",
-        text: "Oops! Sorry! I am working on my garden. Please try again.",
+        text: t("ai.chat.errorReply"),
       };
       updateActiveConversationMessages((previousMessages) => [
         ...previousMessages,
@@ -693,9 +697,9 @@ export default function AiHelperScreen() {
 
             <View className="flex-1 px-3">
               <Text className="text-white/80 text-xs font-medium tracking-wide uppercase">
-                AI Assistant
+                {t("ai.helper.title")}
               </Text>
-              <Text className="text-white text-2xl font-bold">Talk to AI Gardener</Text>
+              <Text className="text-white text-xl font-bold">{t("home.talkToAi")}</Text>
             </View>
 
             <View className="w-10 h-10" />
@@ -707,7 +711,7 @@ export default function AiHelperScreen() {
               activeOpacity={0.85}
               className="px-4 py-2 rounded-full border border-white/30 bg-white/20 flex-row items-center"
             >
-              <Text className="text-white font-semibold">{activeConversation?.title || "Chat"}</Text>
+              <Text className="text-white font-semibold">{activeConversation?.title || t("ai.chat.chat")}</Text>
               <ChevronDown size={14} color="white" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
@@ -821,7 +825,7 @@ export default function AiHelperScreen() {
               <TextInput
                 className="flex-1 text-base text-[#374151]"
                 placeholder={
-                  isRecognizing ? "Listening..." : "Ask me anything..."
+                  isRecognizing ? t("ai.chat.listening") : t("home.askAnything")
                 }
                 placeholderTextColor={isRecognizing ? "#ef4444" : "#A0A0A0"}
                 multiline
@@ -899,10 +903,10 @@ export default function AiHelperScreen() {
               </View>
             </View>
             <Text className="text-xl font-bold text-[#1F2937] mb-4 text-center">
-              Select Language
+              {t("account.selectLanguage")}
             </Text>
             <View className="gap-2">
-              {LANGUAGE_OPTIONS.map((lang) => (
+              {languageOptions.map((lang) => (
                 <TouchableOpacity
                   key={lang.code}
                   onPress={() => {
@@ -941,7 +945,7 @@ export default function AiHelperScreen() {
               className="mt-4 py-2"
             >
               <Text className="text-gray-400 font-medium text-center">
-                Cancel
+                {t("account.cancel")}
               </Text>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -965,10 +969,10 @@ export default function AiHelperScreen() {
             className="bg-white w-full max-w-sm rounded-[24px] p-6 shadow-2xl"
           >
             <Text className="text-2xl font-bold text-[#1F2937] mb-1 text-center">
-              Conversations
+              {t("ai.chat.conversations")}
             </Text>
             <Text className="text-sm text-gray-400 font-medium mb-6 text-center">
-              Select a conversation to continue or create a new one. For more options, long-press on a conversation.
+              {t("ai.chat.conversationsMsg")}
             </Text>
 
             <ScrollView
@@ -1018,14 +1022,14 @@ export default function AiHelperScreen() {
               className="mt-6 bg-[#5F7A4B] w-full py-3.5 rounded-xl flex-row justify-center items-center"
             >
               <Ionicons name="add" size={18} color="white" />
-              <Text className="text-white font-bold text-base ml-2">New Chat</Text>
+              <Text className="text-white font-bold text-base ml-2">{t("ai.chat.newChat")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setShowConversationPicker(false)}
               className="mt-3 py-2"
             >
-              <Text className="text-gray-400 font-medium text-center">Cancel</Text>
+              <Text className="text-gray-400 font-medium text-center">{t("account.cancel")}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -1048,10 +1052,10 @@ export default function AiHelperScreen() {
             className="bg-white w-full max-w-sm rounded-[24px] p-6 shadow-2xl"
           >
             <Text className="text-xl font-bold text-[#1F2937] mb-2 text-center">
-              Conversation Options
+              {t("ai.chat.conversationOptions")}
             </Text>
             <Text className="text-xs text-gray-400 font-medium mb-8 text-center">
-              What do you want to do with this conversation?
+              {t("ai.chat.conversationOptionsMsg")}
             </Text>
 
             <View className="gap-3">
@@ -1059,21 +1063,21 @@ export default function AiHelperScreen() {
                 onPress={handleRenameFromActions}
                 className="bg-[#5F7A4B] w-full py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-base">Rename</Text>
+                <Text className="text-white text-center font-bold text-base">{t("ai.chat.rename")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleDeleteFromActions}
                 className="bg-[#ef4444] w-full py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-base">Delete</Text>
+                <Text className="text-white text-center font-bold text-base">{t("plantCard.delete")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowConversationActionsModal(false)}
                 className="py-2"
               >
-                <Text className="text-gray-400 font-medium text-center">Cancel</Text>
+                <Text className="text-gray-400 font-medium text-center">{t("account.cancel")}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -1097,10 +1101,10 @@ export default function AiHelperScreen() {
             className="bg-white w-full max-w-sm rounded-[24px] p-6 shadow-2xl"
           >
             <Text className="text-xl font-bold text-[#1F2937] mb-3 text-center">
-              Delete Conversation?
+              {t("ai.chat.deleteConversation")}
             </Text>
             <Text className="text-[#6B7280] text-center mb-5">
-              Are you sure you want to delete this conversation? This action cannot be undone.
+              {t("ai.chat.deleteConversationMsg")}
             </Text>
 
             <View className="gap-3">
@@ -1108,14 +1112,14 @@ export default function AiHelperScreen() {
                 onPress={confirmDeleteConversation}
                 className="bg-[#ef4444] w-full py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-base">Yes, Delete</Text>
+                <Text className="text-white text-center font-bold text-base">{t("plantCard.yesDelete")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowDeleteConversationModal(false)}
                 className="bg-[#5F7A4B] w-full py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-base">Cancel</Text>
+                <Text className="text-white text-center font-bold text-base">{t("account.cancel")}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -1139,16 +1143,16 @@ export default function AiHelperScreen() {
             className="bg-white w-full max-w-sm rounded-[24px] p-6 shadow-2xl"
           >
             <Text className="text-xl font-bold text-[#1F2937] mb-3 text-center">
-              Rename Conversation
+              {t("ai.chat.renameConversation")}
             </Text>
             <Text className="text-[#6B7280] text-center mb-4">
-              Enter a new name for this chat.
+              {t("ai.chat.renameConversationMsg")}
             </Text>
 
             <TextInput
               value={renameConversationTitle}
               onChangeText={setRenameConversationTitle}
-              placeholder="Conversation name"
+              placeholder={t("ai.chat.conversationName")}
               placeholderTextColor="#9CA3AF"
               className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-[#1F2937]"
               autoFocus
@@ -1161,7 +1165,7 @@ export default function AiHelperScreen() {
                 className="bg-[#5F7A4B] w-full py-3.5 rounded-xl"
               >
                 <Text className="text-white text-center font-bold text-base">
-                  Save Name
+                  {t("ai.chat.saveName")}
                 </Text>
               </TouchableOpacity>
 
@@ -1169,7 +1173,7 @@ export default function AiHelperScreen() {
                 onPress={() => setShowRenameConversationModal(false)}
                 className="bg-[#8C8673] w-full py-3.5 rounded-xl"
               >
-                <Text className="text-white text-center font-bold text-base">Cancel</Text>
+                <Text className="text-white text-center font-bold text-base">{t("account.cancel")}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -1213,7 +1217,7 @@ export default function AiHelperScreen() {
                 >
                   <Camera size={20} color="white" className="mr-2" />
                   <Text className="text-white font-bold text-lg ml-2">
-                    Take Photo
+                    {t("addPlant.takePhoto")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1222,7 +1226,7 @@ export default function AiHelperScreen() {
                 >
                   <ImageIcon size={20} color="white" className="mr-2" />
                   <Text className="text-white font-bold text-lg ml-2">
-                    Choose from Gallery
+                    {t("addPlant.chooseGallery")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1230,7 +1234,7 @@ export default function AiHelperScreen() {
                   className="mt-2 py-2"
                 >
                   <Text className="text-gray-400 font-medium text-center">
-                    Cancel
+                    {t("account.cancel")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1247,8 +1251,8 @@ export default function AiHelperScreen() {
               >
                 <Text className="text-white text-center font-bold text-lg">
                   {modalConfig.type === "error" && modalConfig.onConfirm
-                    ? "Open Settings"
-                    : "Close"}
+                    ? t("account.openSettings")
+                    : t("identifier.close")}
                 </Text>
               </TouchableOpacity>
             )}

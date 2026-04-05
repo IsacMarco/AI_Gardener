@@ -14,9 +14,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useI18n } from "../../context/I18nContext";
 
 const AiIdentifier = () => {
   const router = useRouter();
+  const { t } = useI18n();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [removeModalVisible, setRemoveModalVisible] = useState(false);
@@ -40,13 +42,13 @@ const AiIdentifier = () => {
 
   const openCamera = async () => {
     if (Platform.OS === "web") {
-      showModal("Not supported", "Camera capture is not available on web.");
+      showModal(t("identifier.notSupported"), t("identifier.notSupportedMsg"));
       return;
     }
 
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.status !== "granted") {
-      showModal("Permission needed", "Camera permission is required.");
+      showModal(t("identifier.permissionNeeded"), t("identifier.cameraPermission"));
       return;
     }
 
@@ -65,7 +67,7 @@ const AiIdentifier = () => {
   const openGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
-      showModal("Permission needed", "Gallery permission is required.");
+      showModal(t("identifier.permissionNeeded"), t("identifier.galleryPermission"));
       return;
     }
 
@@ -83,11 +85,11 @@ const AiIdentifier = () => {
 
   const handleSubmit = () => {
     if (!selectedImage) {
-      showModal("No photo selected", "Please choose or take a photo first.");
+      showModal(t("identifier.noPhoto"), t("identifier.noPhotoMsg"));
       return;
     }
 
-    showModal("Submitted", "Your plant photo is ready for analysis.");
+    showModal(t("identifier.submitted"), t("identifier.submittedMsg"));
   };
 
   return (
@@ -113,9 +115,9 @@ const AiIdentifier = () => {
 
             <View className="flex-1 px-3">
               <Text className="text-white/80 text-xs font-medium tracking-wide uppercase">
-                AI Assistant
+                {t("ai.helper.title")}
               </Text>
-              <Text className="text-white text-2xl font-bold">Plant Identifier</Text>
+              <Text className="text-white text-2xl font-bold">{t("identifier.title")}</Text>
             </View>
 
             <View className="w-10 h-10" />
@@ -129,9 +131,9 @@ const AiIdentifier = () => {
             contentContainerStyle={{ paddingBottom: 15 }}
           >
             <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-[#D8D5CB]">
-              <Text className="text-[#1F2937] text-lg font-bold mb-1">Choose Photo Source</Text>
+              <Text className="text-[#1F2937] text-lg font-bold mb-1">{t("identifier.chooseSource")}</Text>
               <Text className="text-[#6B7280] mt-1 mb-4">
-                Use gallery or take a new image with your camera.
+                {t("identifier.chooseSourceMsg")}
               </Text>
 
               <View className="flex-row gap-3">
@@ -143,9 +145,9 @@ const AiIdentifier = () => {
                   <View className="w-11 h-11 rounded-full bg-[#5F7A4B]/15 items-center justify-center mb-3">
                     <Ionicons name="images-outline" size={22} color="#5F7A4B" />
                   </View>
-                  <Text className="text-[#1F2937] font-bold text-base">Gallery</Text>
+                  <Text className="text-[#1F2937] font-bold text-base">{t("identifier.gallery")}</Text>
                   <Text className="text-[#6B7280] text-xs mt-1 leading-4">
-                    Pick an existing plant photo
+                    {t("identifier.galleryDesc")}
                   </Text>
                 </TouchableOpacity>
 
@@ -157,9 +159,9 @@ const AiIdentifier = () => {
                   <View className="w-11 h-11 rounded-full bg-[#5F7A4B]/15 items-center justify-center mb-3">
                     <Ionicons name="camera-outline" size={22} color="#5F7A4B" />
                   </View>
-                  <Text className="text-[#1F2937] font-bold text-base">Camera</Text>
+                  <Text className="text-[#1F2937] font-bold text-base">{t("identifier.camera")}</Text>
                   <Text className="text-[#6B7280] text-xs mt-1 leading-4">
-                    Capture a new plant photo
+                    {t("identifier.cameraDesc")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -167,7 +169,7 @@ const AiIdentifier = () => {
 
             {selectedImage && (
               <View className="bg-white rounded-2xl p-4 shadow-sm border border-[#D8D5CB]">
-                <Text className="text-[#1F2937] text-base font-semibold mb-3">Selected Photo</Text>
+                <Text className="text-[#1F2937] text-base font-semibold mb-3">{t("identifier.selectedPhoto")}</Text>
                 <Image
                   source={{ uri: selectedImage }}
                   style={{ width: "100%", height: 260, borderRadius: 14 }}
@@ -186,7 +188,7 @@ const AiIdentifier = () => {
                       color="white"
                       style={{ marginRight: 8 }}
                     />
-                    <Text className="text-white font-bold text-base">Submit Photo</Text>
+                    <Text className="text-white font-bold text-base">{t("identifier.submit")}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -200,7 +202,7 @@ const AiIdentifier = () => {
                       color="white"
                       style={{ marginRight: 8 }}
                     />
-                    <Text className="text-white font-bold text-base">Remove Photo</Text>
+                    <Text className="text-white font-bold text-base">{t("identifier.remove")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -242,7 +244,7 @@ const AiIdentifier = () => {
               onPress={() => setModalVisible(false)}
               className="w-full py-3.5 rounded-xl shadow-sm active:opacity-90 bg-[#5F7A4B]"
             >
-              <Text className="text-white text-center font-bold text-lg">Close</Text>
+              <Text className="text-white text-center font-bold text-lg">{t("identifier.close")}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -269,10 +271,10 @@ const AiIdentifier = () => {
             </View>
 
             <Text className="text-xl font-bold text-[#1F2937] mb-2 text-center">
-              Remove Photo?
+              {t("identifier.removeQuestion")}
             </Text>
             <Text className="text-gray-500 text-center mb-8 px-2 text-base leading-6">
-              Are you sure you want to remove the selected photo?
+              {t("identifier.removeMsg")}
             </Text>
 
             <View className="w-full gap-3">
@@ -283,14 +285,14 @@ const AiIdentifier = () => {
                 }}
                 className="w-full py-3.5 rounded-xl shadow-sm active:opacity-90 bg-[#ef4444]"
               >
-                <Text className="text-white text-center font-bold text-lg">Remove</Text>
+                <Text className="text-white text-center font-bold text-lg">{t("identifier.remove")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setRemoveModalVisible(false)}
                 className="w-full py-3.5 rounded-xl shadow-sm active:opacity-90 bg-[#5F7A4B]"
               >
-                <Text className="text-white text-center font-bold text-lg">Cancel</Text>
+                <Text className="text-white text-center font-bold text-lg">{t("account.cancel")}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>

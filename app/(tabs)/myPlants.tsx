@@ -16,11 +16,13 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
+import { useI18n } from "../../context/I18nContext";
 
 const auth = getAuth();
 
 export default function MyPlants() {
   const router = useRouter();
+  const { t } = useI18n();
   const {
     plants,
     loading,
@@ -61,14 +63,14 @@ export default function MyPlants() {
             }}
           />
           <Text className="text-gray-600 text-lg">
-            Please log in to see your plants.
+            {t("myPlants.loginRequired")}
           </Text>
           <TouchableOpacity
             onPress={() => router.replace("/")}
             className="mt-4 bg-green-600 px-6 py-3 rounded-full"
           >
             <Text className="text-white font-semibold text-lg">
-              Go to Login
+              {t("myPlants.goToLogin")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -100,11 +102,10 @@ export default function MyPlants() {
               <WifiOff size={30} color="#D97706" />
             </View>
             <Text className="text-xl font-bold mb-2 text-center">
-              No Server Connection
+              {t("home.noServer")}
             </Text>
             <Text className="text-gray-500 mb-6 text-center leading-5">
-              We have displayed the plants saved locally on your phone. Data will be
-              updated automatically when connection is restored.
+              {t("home.noServerMsg")}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -113,7 +114,7 @@ export default function MyPlants() {
               }}
               className="bg-[#5F7A4B] w-full py-3 rounded-xl"
             >
-              <Text className="text-white text-center font-bold">I Understand</Text>
+              <Text className="text-white text-center font-bold">{t("home.understand")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -128,10 +129,10 @@ export default function MyPlants() {
       <SafeAreaView className="flex-1">
         <View className="items-center mt-4 mb-6 px-5">
           <Text className="text-3xl font-bold text-white tracking-wider">
-            My Garden
+            {t("myPlants.title")}
           </Text>
           <Text className="text-white/85 mt-2 text-base text-center">
-            View and manage your lovely plants.
+            {t("myPlants.subtitle")}
           </Text>
         </View>
         <View className="flex-1 bg-[#F2F1ED] rounded-t-[35px] px-5 pt-6 pb-4">
@@ -139,7 +140,7 @@ export default function MyPlants() {
             <View className="mb-4 bg-orange-100 border border-orange-200 rounded-2xl px-4 py-3 flex-row items-center">
               <WifiOff size={18} color="#D97706" />
               <Text className="ml-2 text-orange-800 font-semibold">
-                Offline mode: we are displaying the plants saved locally
+                {t("home.offlineMode")}
               </Text>
             </View>
           )}
@@ -153,7 +154,7 @@ export default function MyPlants() {
                 <Brain size={21} color="#5F7A4B" />
               </View>
               <Text className="text-[#1F2937] font-bold text-[15px]">
-                Talk to AI Gardener
+                {t("myPlants.talkToAi")}
               </Text>
             </TouchableOpacity>
 
@@ -165,7 +166,7 @@ export default function MyPlants() {
               className="ml-3 bg-[#5F7A4B] rounded-2xl px-4 py-4 flex-row items-center justify-center"
             >
               <Plus size={18} color="white" />
-              <Text className="text-white font-semibold ml-2">Add</Text>
+              <Text className="text-white font-semibold ml-2">{t("myPlants.add")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -193,19 +194,22 @@ export default function MyPlants() {
             >
               {plants.length === 0 ? (
                 <View className="items-center mt-6">
-                  <Text className="text-gray-500 text-lg">No plants yet. 🥺</Text>
+                  <Text className="text-gray-500 text-lg">{t("myPlants.empty")}</Text>
                   <Text className="text-gray-400">
-                    Tap Add to start your gardening journey!
+                    {t("myPlants.emptyHint")}
                   </Text>
                 </View>
               ) : (
                 plants.map((plant) => {
                   const remindersEnabled = Boolean(plant.watering?.enabled);
-                  let scheduleText = "No schedule";
+                  let scheduleText = t("home.noSchedule");
                   if (plant.watering?.enabled && plant.watering?.frequency) {
-                    scheduleText = `Every ${plant.watering.frequency} days at ${plant.watering.time}`;
+                    scheduleText = t("home.everyDaysAt", {
+                      days: plant.watering.frequency,
+                      time: plant.watering.time,
+                    });
                   } else if (plant.watering && !plant.watering.enabled) {
-                    scheduleText = "Reminders off";
+                    scheduleText = t("home.remindersOff");
                   }
 
                   const imageSource = plant.imageBase64
@@ -220,7 +224,7 @@ export default function MyPlants() {
                       from="myPlants"
                       remindersEnabled={remindersEnabled}
                       image={imageSource}
-                      specie={plant.species || "Unknown species"}
+                      specie={plant.species || t("myPlants.unknownSpecies")}
                       onDelete={() => {
                         void deletePlant(plant._id);
                       }}

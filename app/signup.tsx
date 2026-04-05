@@ -23,10 +23,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useI18n } from "../context/I18nContext";
 const { height } = Dimensions.get("window");
 const auth = getAuth();
 export default function SignUpScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,13 +74,13 @@ export default function SignUpScreen() {
       const err = e as FirebaseError;
       setSignUpStatus("error");
       if (err.code === "auth/email-already-in-use") {
-        setSignUpErrorMessage("This email is already used by another account.");
+        setSignUpErrorMessage(t("auth.signup.err.emailInUse"));
       } else if (err.code === "auth/invalid-email") {
-        setSignUpErrorMessage("Please enter a valid email address.");
+        setSignUpErrorMessage(t("auth.signup.err.invalidEmail"));
       } else if (err.code === "auth/network-request-failed") {
-        setSignUpErrorMessage("Network error. Please check your connection and try again.");
+        setSignUpErrorMessage(t("auth.signup.err.network"));
       } else {
-        setSignUpErrorMessage("An error occurred during sign up. Please try again.");
+        setSignUpErrorMessage(t("auth.signup.err.generic"));
       }
     }
   };
@@ -134,20 +136,20 @@ export default function SignUpScreen() {
                 style={{ minHeight: height * 0.65 }}
               >
                 <Text className="text-3xl font-bold text-white mb-6">
-                  Create Account
+                  {t("auth.signup.title")}
                 </Text>
 
                 <View className="mb-5">
                   <TextInput
                     className="bg-white rounded-xl h-12 px-4 mb-4 text-base text-gray-800"
-                    placeholder="Full Name"
+                    placeholder={t("auth.signup.fullName")}
                     placeholderTextColor="#A0A0A0"
                     value={fullName}
                     onChangeText={setFullName}
                   />
                   <TextInput
                     className="bg-white rounded-xl h-12 px-4 mb-4 text-base text-gray-800"
-                    placeholder="Email"
+                    placeholder={t("auth.login.email")}
                     placeholderTextColor="#A0A0A0"
                     value={email}
                     onChangeText={setEmail}
@@ -158,7 +160,7 @@ export default function SignUpScreen() {
                   <View className="relative mb-3">
                     <TextInput
                       className="bg-white rounded-xl h-12 px-4 pr-12 text-base text-gray-800"
-                      placeholder="Password"
+                      placeholder={t("auth.login.password")}
                       placeholderTextColor="#A0A0A0"
                       value={password}
                       onChangeText={setPassword}
@@ -180,7 +182,7 @@ export default function SignUpScreen() {
                   <View className="relative mb-4">
                     <TextInput
                       className="bg-white rounded-xl h-12 px-4 pr-12 text-base text-gray-800"
-                      placeholder="Confirm Password"
+                      placeholder={t("auth.signup.passwordConfirm")}
                       placeholderTextColor="#A0A0A0"
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
@@ -201,53 +203,53 @@ export default function SignUpScreen() {
 
                   <View className="bg-white/65 rounded-xl px-4 py-3 mb-2">
                     <Text className="text-gray-700 font-semibold mb-2">
-                      Password requirements
+                      {t("auth.signup.requirements")}
                     </Text>
 
                     <Text className={`${hasMinLength ? "text-green-700" : "text-gray-500"}`}>
-                      {hasMinLength ? "✓" : "•"} At least 6 characters
+                      {hasMinLength ? "✓" : "•"} {t("auth.signup.req.minLength")}
                     </Text>
                     <Text className={`${hasUppercase ? "text-green-700" : "text-gray-500"}`}>
-                      {hasUppercase ? "✓" : "•"} At least one uppercase letter
+                      {hasUppercase ? "✓" : "•"} {t("auth.signup.req.uppercase")}
                     </Text>
                     <Text className={`${hasDigit ? "text-green-700" : "text-gray-500"}`}>
-                      {hasDigit ? "✓" : "•"} At least one number
+                      {hasDigit ? "✓" : "•"} {t("auth.signup.req.number")}
                     </Text>
                     <Text className={`${hasSpecialChar ? "text-green-700" : "text-gray-500"}`}>
-                      {hasSpecialChar ? "✓" : "•"} At least one special character
+                      {hasSpecialChar ? "✓" : "•"} {t("auth.signup.req.special")}
                     </Text>
                     <Text className={`${passwordsMatch ? "text-green-700" : "text-gray-500"}`}>
-                      {passwordsMatch ? "✓" : "•"} Passwords match
+                      {passwordsMatch ? "✓" : "•"} {t("auth.signup.req.match")}
                     </Text>
                   </View>
                 </View>
 
                 <View className="flex-row justify-between mb-6">
                   <TouchableOpacity
-                    className="bg-transparent borderkq border-white border h-12 rounded-xl justify-center items-center"
+                    className="bg-transparent borderkq border-white border h-14 rounded-xl justify-center items-center px-2"
                     style={{ width: "48%" }}
                     onPress={handleGoToLogin}
                   >
-                    <Text className="text-white font-bold text-base">
-                      Log In
+                    <Text numberOfLines={2} className="text-white font-bold text-sm text-center">
+                      {t("auth.login.logIn")}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    className={`h-12 rounded-xl justify-center items-center ${canSignUp ? "bg-white" : "bg-white/60"}`}
+                    className={`h-14 rounded-xl justify-center items-center px-2 ${canSignUp ? "bg-white" : "bg-white/60"}`}
                     style={{ width: "48%" }}
                     onPress={handleSignUp}
                     disabled={!canSignUp}
                   >
-                    <Text className="text-gray-600 font-bold text-base">
-                      Sign Up
+                    <Text numberOfLines={2} className="text-gray-600 font-bold text-sm text-center">
+                      {t("auth.login.signUp")}
                     </Text>
                   </TouchableOpacity>
                 </View>
 
                 <View className="items-center mt-2">
                   <Text className="text-gray-500 mb-4 text-sm">
-                    or sign up with
+                    {t("auth.signup.orSignUp")}
                   </Text>
 
                   <View className="flex-row gap-5">
@@ -320,18 +322,18 @@ export default function SignUpScreen() {
                     <CheckCircle2 size={34} color="#16A34A" />
                   </View>
                   <Text className="text-xl font-bold text-[#1F2937] mb-2">
-                    Account Created
+                    {t("auth.signup.accountCreated")}
                   </Text>
                   <Text className="text-center text-gray-600 px-2">
-                    Your account was created successfully. You can now log in.
+                    {t("auth.signup.accountCreatedMsg")}
                   </Text>
                 </View>
                 <TouchableOpacity
                   className="w-full bg-[#5F7A4B] py-4 rounded-full items-center mb-4 shadow-sm"
                   onPress={handleGoToLogin}
                 >
-                  <Text className="text-white font-bold text-base">
-                    Go to Log In
+                  <Text numberOfLines={2} className="text-white font-bold text-base text-center px-2">
+                    {t("auth.signup.goToLogin")}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -344,7 +346,7 @@ export default function SignUpScreen() {
                     <AlertCircle size={34} color="#EF4444" />
                   </View>
                   <Text className="text-xl font-bold text-[#1F2937] mb-2">
-                    Sign Up Failed
+                    {t("auth.signup.failed")}
                   </Text>
                   <Text className="text-center text-gray-600 px-2">
                     {signUpErrorMessage}
@@ -354,8 +356,8 @@ export default function SignUpScreen() {
                   className="w-full bg-gray-100 py-4 rounded-full items-center mb-4 shadow-sm"
                   onPress={handleCloseModal}
                 >
-                  <Text className="text-[#1F2937] font-bold text-base">
-                    Try Again
+                  <Text numberOfLines={2} className="text-[#1F2937] font-bold text-base text-center px-2">
+                    {t("auth.login.tryAgain")}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -365,10 +367,10 @@ export default function SignUpScreen() {
               <View className="items-center py-8">
                 <ActivityIndicator size="large" color="#4CAF50" />
                 <Text className="text-[#1F2937] font-semibold mt-4 text-base">
-                  Creating your account...
+                  {t("auth.signup.creating")}
                 </Text>
                 <Text className="text-gray-500 mt-1 text-center px-3">
-                  Please wait a moment.
+                  {t("auth.signup.wait")}
                 </Text>
               </View>
             )}

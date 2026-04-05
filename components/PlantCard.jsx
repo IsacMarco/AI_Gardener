@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { useI18n } from "../context/I18nContext";
 
 const PlantCard = ({
   id,
@@ -13,7 +14,8 @@ const PlantCard = ({
 }) => {
   const isUserPhoto = image && image.uri;
   const router = useRouter();
-  const scheduleLabel = remindersEnabled ? schedule : "Reminders off";
+  const { t } = useI18n();
+  const scheduleLabel = remindersEnabled ? schedule : t("home.remindersOff");
   return (
     <TouchableOpacity
       key={id}

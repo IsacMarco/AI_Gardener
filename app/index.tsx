@@ -29,6 +29,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useI18n } from "../context/I18nContext";
 
 const { height } = Dimensions.get("window");
 const auth = getAuth();
@@ -39,6 +40,7 @@ GoogleSignin.configure({
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
@@ -70,17 +72,17 @@ export default function LoginScreen() {
     switch (errorCode) {
       case "auth/invalid-credential":
       case "auth/wrong-password":
-        return "Invalid password. Please check and try again.";
+        return t("auth.login.err.invalidPassword");
       case "auth/user-not-found":
-        return "No account found with this email. Please check and try again.";
+        return t("auth.login.err.userNotFound");
       case "auth/invalid-email":
-        return "Invalid email. Please check and try again.";
+        return t("auth.login.err.invalidEmail");
       case "auth/too-many-requests":
-        return "Too many failed attempts. Please wait a moment and try again.";
+        return t("auth.login.err.tooMany");
       case "auth/network-request-failed":
-        return "Network error. Please check your connection and try again.";
+        return t("auth.login.err.network");
       default:
-        return "Something went wrong. Please try again.";
+        return t("auth.login.err.generic");
     }
   };
 
@@ -144,13 +146,13 @@ export default function LoginScreen() {
         // Operatiunea e deja in curs, nu facem nimic
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         setLogInStatus("error");
-        setErrorMessage("Google Play Services nu sunt disponibile");
+        setErrorMessage(t("auth.login.err.playServices"));
         setModalVisible(true);
       } else {
         // Orice alta eroare
         setLogInStatus("error");
         setErrorMessage(
-          error.message || "A aparut o eroare la conectarea cu Google.",
+          error.message || t("auth.login.err.googleGeneric"),
         );
         setModalVisible(true);
       }
@@ -185,13 +187,13 @@ export default function LoginScreen() {
               style={{ height: height * 0.6 }}
             >
               <Text className="text-3xl font-bold text-white mb-8">
-                Welcome Back!
+                {t("auth.login.welcome")}
               </Text>
 
               <View className="mb-5">
                 <TextInput
                   className="bg-white rounded-xl h-12 px-4 mb-4 text-base text-gray-800"
-                  placeholder="Email"
+                  placeholder={t("auth.login.email")}
                   placeholderTextColor="#A0A0A0"
                   value={email}
                   onChangeText={setEmail}
@@ -201,7 +203,7 @@ export default function LoginScreen() {
                 <View className="relative mb-4">
                   <TextInput
                     className="bg-white rounded-xl h-12 px-4 pr-12 text-base text-gray-800"
-                    placeholder="Password"
+                    placeholder={t("auth.login.password")}
                     placeholderTextColor="#A0A0A0"
                     value={password}
                     onChangeText={setPassword}
@@ -223,7 +225,7 @@ export default function LoginScreen() {
 
               <View className="flex-row justify-between mb-4">
                 <TouchableOpacity
-                  className={`h-12 rounded-xl justify-center items-center ${canLogin ? "bg-white" : "bg-white/60"}`}
+                  className={`h-14 rounded-xl justify-center items-center px-2 ${canLogin ? "bg-white" : "bg-white/60"}`}
                   style={{ width: "48%" }}
                   onPress={handleLogin}
                   disabled={!canLogin}
@@ -231,19 +233,19 @@ export default function LoginScreen() {
                   {logInStatus === "loading" ? (
                     <ActivityIndicator color="#5F7A4B" />
                   ) : (
-                    <Text className="text-gray-600 font-bold text-base">
-                      Log In
+                    <Text numberOfLines={2} className="text-gray-600 font-bold text-sm text-center">
+                      {t("auth.login.logIn")}
                     </Text>
                   )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  className="bg-transparent border border-white h-12 rounded-xl justify-center items-center"
+                  className="bg-transparent border border-white h-14 rounded-xl justify-center items-center px-2"
                   style={{ width: "48%" }}
                   onPress={() => router.push("/signup")}
                 >
-                  <Text className="text-white font-bold text-base">
-                    Sign Up
+                  <Text numberOfLines={2} className="text-white font-bold text-sm text-center">
+                    {t("auth.login.signUp")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -251,18 +253,17 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={{
                   alignSelf: "flex-start",
-                  width: "35%",
                 }}
                 onPress={() => router.push("/forgotpass")}
               >
                 <Text className="text-gray-500 text-sm mb-10">
-                  Forgot Password?
+                  {t("auth.login.forgotPassword")}
                 </Text>
               </TouchableOpacity>
 
               <View className="items-center">
                 <Text className="text-gray-500 mb-5 text-sm">
-                  or continue with
+                  {t("auth.login.orContinue")}
                 </Text>
 
                 <View className="flex-row gap-5">
@@ -305,7 +306,7 @@ export default function LoginScreen() {
                     <X size={32} color="#EF4444" />
                   </View>
                   <Text className="text-xl font-bold text-[#1F2937]">
-                    Log In Failed
+                    {t("auth.login.failed")}
                   </Text>
                   <Text className="text-center text-gray-600 mt-2">
                     {errorMessage}
@@ -315,8 +316,13 @@ export default function LoginScreen() {
                   className={`w-full py-4 rounded-full items-center shadow-sm ${showSignupAction ? "bg-[#5F7A4B]" : "bg-gray-100"}`}
                   onPress={showSignupAction ? handleGoToSignup : handleCloseModal}
                 >
-                  <Text className={`font-bold text-base ${showSignupAction ? "text-white" : "text-[#1F2937]"}`}>
-                    {showSignupAction ? "Create Account" : "Try Again"}
+                  <Text
+                    numberOfLines={2}
+                    className={`font-bold text-base text-center px-2 ${showSignupAction ? "text-white" : "text-[#1F2937]"}`}
+                  >
+                    {showSignupAction
+                      ? t("auth.login.createAccount")
+                      : t("auth.login.tryAgain")}
                   </Text>
                 </TouchableOpacity>
               </>

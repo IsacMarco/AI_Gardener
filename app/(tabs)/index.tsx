@@ -24,9 +24,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlants } from "../../context/PlantContext";
+import { useI18n } from "../../context/I18nContext";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const {
     plants,
     loading,
@@ -65,11 +67,10 @@ export default function HomeScreen() {
               <WifiOff size={30} color="#D97706" />
             </View>
             <Text className="text-xl font-bold mb-2 text-center">
-              No Server Connection
+              {t("home.noServer")}
             </Text>
             <Text className="text-gray-500 mb-6 text-center leading-5">
-              We have displayed the plants saved locally on your phone. Data will be
-              updated automatically when connection is restored.
+              {t("home.noServerMsg")}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -78,7 +79,7 @@ export default function HomeScreen() {
               }}
               className="bg-[#5F7A4B] w-full py-3 rounded-xl"
             >
-              <Text className="text-white text-center font-bold">I Understand</Text>
+              <Text className="text-white text-center font-bold">{t("home.understand")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -98,7 +99,7 @@ export default function HomeScreen() {
         >
           <View className="items-center mt-4 mb-8">
             <Text className="text-3xl font-bold text-white mb-6 tracking-wide shadow-sm">
-              Welcome Home!
+              {t("home.welcome")}
             </Text>
             <TouchableOpacity
               className="w-40 h-40 bg-[#A4B58E] rounded-full items-center justify-center border-4 border-white/30 shadow-lg"
@@ -113,14 +114,14 @@ export default function HomeScreen() {
               <View className="mb-4 bg-orange-100 border border-orange-200 rounded-2xl px-4 py-3 flex-row items-center">
                 <WifiOff size={18} color="#D97706" />
                 <Text className="ml-2 text-orange-800 font-semibold">
-                  Offline mode: we are displaying the plants saved locally
+                  {t("home.offlineMode")}
                 </Text>
               </View>
             )}
 
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-xl font-bold text-[#1F2937] mb-5 pl-1">
-                Your Garden at a Glance
+                {t("home.glance")}
               </Text>
 
               <View className="flex-row items-center">
@@ -129,7 +130,7 @@ export default function HomeScreen() {
                     className="text-md text-gray-600 mb-5 mr-3"
                     onPress={() => router.push("/myPlants")}
                   >
-                    see all
+                    {t("home.seeAll")}
                   </Text>
                 )}
 
@@ -163,11 +164,10 @@ export default function HomeScreen() {
                     <Plus size={30} color="#5F7A4B" />
                   </View>
                   <Text className="text-lg font-bold text-[#1F2937]">
-                    Start Your Garden
+                    {t("home.startGarden")}
                   </Text>
                   <Text className="text-gray-500 text-center mt-1 px-4 leading-5">
-                    Your garden looks a bit empty. Tap here to add your first
-                    plant! 🌱
+                    {t("home.startGardenMsg")}
                   </Text>
                 </TouchableOpacity>
               ) : (
@@ -185,11 +185,14 @@ export default function HomeScreen() {
                       : require("../../assets/icons/plants_icon.png");
 
                     const remindersEnabled = Boolean(plant.watering?.enabled);
-                    let scheduleText = "No schedule";
+                    let scheduleText = t("home.noSchedule");
                     if (plant.watering?.enabled && plant.watering?.frequency) {
-                      scheduleText = `Every ${plant.watering.frequency} days at ${plant.watering.time}`;
+                      scheduleText = t("home.everyDaysAt", {
+                        days: plant.watering.frequency,
+                        time: plant.watering.time,
+                      });
                     } else if (plant.watering && !plant.watering.enabled) {
-                      scheduleText = "Reminders off";
+                      scheduleText = t("home.remindersOff");
                     }
 
                     return (
@@ -197,7 +200,7 @@ export default function HomeScreen() {
                         key={plant._id}
                         id={plant._id}
                         name={plant.name}
-                        specie={plant.species || "Unknown"}
+                        specie={plant.species || t("home.unknown")}
                         image={imageSource}
                         schedule={scheduleText}
                         from="home"
@@ -218,17 +221,17 @@ export default function HomeScreen() {
                       <Plus size={30} color="#2F4A2A" />
                     </View>
                     <Text className="text-[#1F2937] text-base font-bold text-center">
-                      Add Plant
+                      {t("home.addPlant")}
                     </Text>
                     <Text className="text-[#2F4A2A] text-xs mt-2 text-center px-2">
-                      Grow your garden with another plant
+                      {t("home.addPlantMsg")}
                     </Text>
                   </TouchableOpacity>
                 </ScrollView>
               )}
             </View>
             <Text className="text-xl font-bold text-[#1F2937] mb-4 pl-1 pt-2">
-              Talk to AI Gardener
+              {t("home.talkToAi")}
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}
@@ -237,7 +240,7 @@ export default function HomeScreen() {
             >
               <Search size={20} color="#9CA3AF" />
               <Text className="flex-1 ml-3 text-base text-[#9CA3AF]">
-                Ask me anything...
+                {t("home.askAnything")}
               </Text>
               <View className="flex-row gap-4">
                 <View>
@@ -249,7 +252,7 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
             <Text className="text-xl font-bold text-[#1F2937] mb-4 pl-1">
-              Discover things for your garden
+              {t("home.discover")}
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/marketplace")}
@@ -257,7 +260,7 @@ export default function HomeScreen() {
               className="bg-[#5F7A4B] flex-row items-center justify-between px-4 py-3.5 rounded-2xl shadow-sm mb-8"
             >
               <Text className="text-base text-white font-medium">
-                Explore Marketplace
+                {t("home.exploreMarketplace")}
               </Text>
               <Plus size={20} color="white" />
             </TouchableOpacity>
@@ -265,11 +268,10 @@ export default function HomeScreen() {
               <View className="flex-row justify-between items-start">
                 <View className="flex-1 mr-4">
                   <Text className="text-xl font-bold text-[#1F2937] mb-2">
-                    Daily Plant Care Tip
+                    {t("home.tipTitle")}
                   </Text>
                   <Text className="text-gray-600 text-sm leading-5">
-                    Rotate your houseplants weekly for even growth and prevent
-                    leaning towards the light source.
+                    {t("home.tipBody")}
                   </Text>
                 </View>
                 <View className="mt-1">

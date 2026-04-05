@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useI18n } from "../context/I18nContext";
 
 interface PlantListItemProps {
   id: string;
@@ -39,9 +40,10 @@ export default function PlantListItem({
   onWater,
 }: PlantListItemProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const [modalVisible, setModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const scheduleLabel = remindersEnabled ? schedule : "Reminders off";
+  const scheduleLabel = remindersEnabled ? schedule : t("home.remindersOff");
 
   // --- HANDLERS ---
   const handleOptionsPress = () => {
@@ -110,7 +112,7 @@ export default function PlantListItem({
             {name}
           </Text>
           <Text className="text-[#888888] text-xs font-medium text-lg text-gray-500 italic font-medium">
-            {specie || "Unknown"}
+            {specie || t("home.unknown")}
           </Text>
           <Text
             className={`text-xs font-bold mt-1 ${remindersEnabled ? "text-[#5F7A4B]" : "text-gray-400"}`}
@@ -156,7 +158,7 @@ export default function PlantListItem({
               {name}
             </Text>
             <Text className="text-gray-400 text-sm mb-6 font-medium tracking-wider">
-              What would you like to do with this plant?
+              {t("plantCard.actionsTitle")}
             </Text>
 
             {/* 2. Buton EDITARE (Gri) */}
@@ -166,7 +168,7 @@ export default function PlantListItem({
             >
               <Edit3 size={20} color="#4B5563" className="mr-2" />
               <Text className="text-gray-700 font-bold text-lg ml-2">
-                Edit Details
+                {t("plantCard.edit")}
               </Text>
             </TouchableOpacity>
 
@@ -177,13 +179,13 @@ export default function PlantListItem({
             >
               <Trash2 size={20} color="#EF4444" className="mr-2" />
               <Text className="text-[#EF4444] font-bold text-lg ml-1">
-                Delete Plant
+                {t("plantCard.delete")}
               </Text>
             </TouchableOpacity>
 
             {/* Close */}
             <TouchableOpacity onPress={handleCloseModal} className="py-2">
-              <Text className="text-gray-400 font-medium text-base">Close</Text>
+              <Text className="text-gray-400 font-medium text-base">{t("plantCard.close")}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -211,24 +213,24 @@ export default function PlantListItem({
             </View>
 
             <Text className="text-xl font-bold text-[#1F2937] mb-2 text-center">
-              Delete Plant?
+              {t("plantCard.deleteQuestion")}
             </Text>
             <Text className="text-gray-500 text-center mb-6 leading-6">
-              Are you sure you want to remove {name} from your garden? This cannot be undone.
+              {t("plantCard.deleteMsg", { name })}
             </Text>
 
             <TouchableOpacity
               onPress={handleConfirmDelete}
               className="w-full bg-red-500 py-3.5 rounded-xl items-center mb-3"
             >
-              <Text className="text-white font-bold text-lg">Yes, Delete</Text>
+              <Text className="text-white font-bold text-lg">{t("plantCard.yesDelete")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleCancelDelete}
               className="w-full bg-gray-100 py-3.5 rounded-xl items-center"
             >
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+              <Text className="text-gray-700 font-semibold">{t("account.cancel")}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>

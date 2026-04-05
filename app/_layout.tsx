@@ -9,6 +9,7 @@ import "./globals.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PlantProvider } from "@/context/PlantContext";
+import { I18nProvider } from "@/context/I18nContext";
 
 const auth = getAuth();
 
@@ -44,25 +45,27 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <PlantProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              gestureEnabled: false,
-              animation: "fade",
-            }}
-          >
-            <Stack.Protected guard={!!usr}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="(aiPart)" />
-            </Stack.Protected>
-            <Stack.Protected guard={!usr}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="signup" />
-              <Stack.Screen name="forgotpass" />
-            </Stack.Protected>
-          </Stack>
-        </PlantProvider>
+        <I18nProvider>
+          <PlantProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                gestureEnabled: false,
+                animation: "fade",
+              }}
+            >
+              <Stack.Protected guard={!!usr}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="(aiPart)" />
+              </Stack.Protected>
+              <Stack.Protected guard={!usr}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="signup" />
+                <Stack.Screen name="forgotpass" />
+              </Stack.Protected>
+            </Stack>
+          </PlantProvider>
+        </I18nProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

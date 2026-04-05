@@ -17,11 +17,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useI18n } from "../context/I18nContext";
 
 const { height } = Dimensions.get("window");
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,8 +62,8 @@ export default function ForgotPasswordScreen() {
 
     if (!normalizedEmail) {
       showModal(
-        "Missing Email",
-        "Please enter your email address to continue.",
+        t("auth.forgot.missingEmail"),
+        t("auth.forgot.missingEmailMsg"),
         "error",
       );
       return;
@@ -69,7 +71,7 @@ export default function ForgotPasswordScreen() {
 
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
     if (!isValidEmail) {
-      showModal("Invalid Email", "Please enter a valid email address.", "error");
+      showModal(t("auth.forgot.invalidEmail"), t("auth.forgot.invalidEmailMsg"), "error");
       return;
     }
 
@@ -81,8 +83,8 @@ export default function ForgotPasswordScreen() {
 
       if (!signInMethods || signInMethods.length === 0) {
         showModal(
-          "Account Not Found",
-          "This email is not registered in the app. Please sign up first.",
+          t("auth.forgot.accountNotFound"),
+          t("auth.forgot.accountNotFoundMsg"),
           "error",
         );
         return;
@@ -90,19 +92,19 @@ export default function ForgotPasswordScreen() {
 
       await sendPasswordResetEmail(auth(), normalizedEmail);
       showModal(
-        "Check your Inbox",
-        `We have sent a password recovery link to:\n${normalizedEmail}\n\nPlease check your spam folder too!`,
+        t("auth.forgot.checkInbox"),
+        t("auth.forgot.checkInboxMsg", { email: normalizedEmail }),
         "success",
       );
     } catch (error: any) {
       console.warn("Forgot password error:", error?.code || error?.message || error);
-      let msg = "Something went wrong. Please try again later.";
+      let msg = t("auth.forgot.err.generic");
       if (error.code === "auth/invalid-email") {
-        msg = "The email address format is invalid.";
+        msg = t("auth.forgot.err.invalidFormat");
       } else if (error.code === "auth/user-not-found") {
-        msg = "This email is not registered in the app. Please sign up first.";
+        msg = t("auth.forgot.accountNotFoundMsg");
       }
-      showModal("Error", msg, "error");
+      showModal(t("common.error"), msg, "error");
     } finally {
       setLoading(false);
     }
@@ -150,10 +152,10 @@ export default function ForgotPasswordScreen() {
               className={`w-full py-3.5 rounded-xl ${modalContent.type === "success" ? "bg-[#5F7A4B]" : "bg-red-500"}`}
               activeOpacity={0.8}
             >
-              <Text className="text-white text-center font-bold text-lg">
+              <Text numberOfLines={2} className="text-white text-center font-bold text-base px-2">
                 {modalContent.type === "success"
-                  ? "Back to Login"
-                  : "Try Again"}
+                  ? t("auth.forgot.backToLogin")
+                  : t("auth.login.tryAgain")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -186,17 +188,16 @@ export default function ForgotPasswordScreen() {
             style={{ height: height * 0.55 }}
           >
             <Text className="text-3xl font-bold text-white mb-3 shadow-sm">
-              Forgot Password?
+              {t("auth.forgot.title")}
             </Text>
             <Text className="text-gray-100 text-base mb-8 leading-6 opacity-90">
-              Don't worry! It happens. Please enter the email address associated
-              with your account.
+              {t("auth.forgot.subtitle")}
             </Text>
 
             <View className="mb-8">
               <TextInput
                 className="bg-white rounded-xl h-14 px-4 text-base text-gray-800 shadow-sm"
-                placeholder="Email Address"
+                placeholder={t("auth.forgot.emailAddress")}
                 placeholderTextColor="#A0A0A0"
                 value={email}
                 onChangeText={setEmail}
@@ -215,8 +216,8 @@ export default function ForgotPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color="#5F7A4B" size="small" />
               ) : (
-                <Text className="text-[#5F7A4B] font-extrabold text-lg">
-                  Send Reset Link
+                <Text numberOfLines={2} className="text-[#5F7A4B] font-extrabold text-base text-center px-3">
+                  {t("auth.forgot.send")}
                 </Text>
               )}
             </TouchableOpacity>

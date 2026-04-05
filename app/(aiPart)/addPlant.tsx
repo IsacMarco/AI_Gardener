@@ -30,11 +30,13 @@ import { usePlants } from "../../context/PlantContext";
 import {
   scheduleWateringNotification,
 } from "../../services/notifications";
+import { useI18n } from "../../context/I18nContext";
 
 const auth = getAuth();
 
 export default function AddPlant() {
   const router = useRouter();
+  const { t } = useI18n();
   const { from } = useLocalSearchParams<{ from?: string }>();
   // --- STATE DATE PLANTA ---
   const [plantName, setPlantName] = useState("");
@@ -89,7 +91,7 @@ export default function AddPlant() {
     if (!user) return;
     const name = plantName.trim();
     if (!name) {
-      showModal("error", "Missing Name", "Please enter a name for your plant.");
+      showModal("error", t("addPlant.missingName"), t("addPlant.missingNameMsg"));
       return;
     }
 
@@ -129,25 +131,25 @@ export default function AddPlant() {
       if (result.success && !result.savedLocally) {
         showModal(
           "success",
-          "Plant Added!",
-          `${plantName} has been successfully added to your garden.`,
+          t("addPlant.added"),
+          t("addPlant.addedMsg", { name: plantName }),
         );
       } else if (result.success && result.savedLocally) {
         showModal(
           "success",
-          "Saved Offline",
-          `${plantName} was saved on your phone and will sync to the database when internet is back.`,
+          t("addPlant.savedOffline"),
+          t("addPlant.savedOfflineMsg", { name: plantName }),
         );
       } else {
         showModal(
           "error",
-          "Save Failed",
-          "Could not save plant.",
+          t("addPlant.saveFailed"),
+          t("addPlant.saveFailedMsg"),
         );
       }
     } catch (error: any) {
       console.error("Error saving plant:", error);
-      showModal("error", "Connection Error", "Please check your connection.");
+      showModal("error", t("addPlant.connectionError"), t("addPlant.connectionErrorMsg"));
     } finally {
       setLoading(false);
     }
@@ -161,8 +163,8 @@ export default function AddPlant() {
         () =>
           showModal(
             "error",
-            "Permission Needed",
-            "Camera permission is required.",
+            t("addPlant.permissionNeeded"),
+            t("addPlant.cameraPermission"),
           ),
         500,
       );
@@ -188,8 +190,8 @@ export default function AddPlant() {
         () =>
           showModal(
             "error",
-            "Permission Needed",
-            "Gallery permission is required.",
+            t("addPlant.permissionNeeded"),
+            t("addPlant.galleryPermission"),
           ),
         500,
       );
@@ -211,15 +213,15 @@ export default function AddPlant() {
     if (Platform.OS === "web") {
       showModal(
         "info",
-        "Not Supported",
-        "Photo picking is not available on web.",
+        t("addPlant.notSupported"),
+        t("addPlant.notSupportedMsg"),
       );
       return;
     }
     showModal(
       "selection",
-      "Add Photo",
-      "Choose where to upload your plant photo from.",
+      t("addPlant.addPhotoTitle"),
+      t("addPlant.addPhotoMsg"),
     );
   };
   // --- LOGICA TIMP ---
@@ -313,7 +315,7 @@ export default function AddPlant() {
                 >
                   <Camera size={20} color="white" className="mr-2" />
                   <Text className="text-white font-bold text-lg ml-2">
-                    Take Photo
+                    {t("addPlant.takePhoto")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -322,7 +324,7 @@ export default function AddPlant() {
                 >
                   <ImageIcon size={20} color="white" className="mr-2" />
                   <Text className="text-white font-bold text-lg ml-2">
-                    Choose from Gallery
+                    {t("addPlant.chooseGallery")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -330,7 +332,7 @@ export default function AddPlant() {
                   className="mt-2 py-2"
                 >
                   <Text className="text-gray-400 font-medium text-center">
-                    Cancel
+                    {t("addPlant.cancel")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -341,7 +343,7 @@ export default function AddPlant() {
                 style={{ backgroundColor: getModalColor() }}
               >
                 <Text className="text-white text-center font-bold text-lg">
-                  {modalConfig.type === "success" ? "Go to My Garden" : "Close"}
+                  {modalConfig.type === "success" ? t("addPlant.goToGarden") : t("addPlant.close")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -362,9 +364,9 @@ export default function AddPlant() {
 
               <View className="flex-1 px-3">
                 <Text className="text-white/80 text-xs font-medium tracking-wide uppercase">
-                  {from === "home" ? "Home" : "My Garden"}
+                  {from === "home" ? t("addPlant.fromHome") : t("addPlant.fromGarden")}
                 </Text>
-                <Text className="text-white text-2xl font-bold">Add New Plant</Text>
+                <Text className="text-white text-2xl font-bold">{t("addPlant.title")}</Text>
               </View>
 
               <View className="w-10 h-10" />
@@ -401,24 +403,24 @@ export default function AddPlant() {
                   </View>
                   <View>
                     <Text className="text-white text-lg font-bold shadow-sm">
-                      {photoUri ? "Nice photo!" : "Add a photo"}
+                      {photoUri ? t("addPlant.nicePhoto") : t("addPlant.addPhoto")}
                     </Text>
                     <Text className="text-gray-200 text-sm">
-                      {photoUri ? "Tap to change" : "Tap to upload"}
+                      {photoUri ? t("addPlant.tapToChange") : t("addPlant.tapToUpload")}
                     </Text>
                   </View>
                 </TouchableOpacity>
               </View>
               <View className="bg-[#E8E6DE]/95 flex-1 rounded-t-[35px] px-6 pt-8 pb-10 min-h-[650px]">
                 <Text className="text-[#1F2937] font-bold text-xl mb-3 ml-1">
-                  Plant Details
+                  {t("addPlant.details")}
                 </Text>
                 <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
                   <Text className="text-[#1F2937] font-bold text-base mb-1">
-                    Plant Name
+                    {t("addPlant.name")}
                   </Text>
                   <TextInput
-                    placeholder="e.g. My plant"
+                    placeholder={t("addPlant.namePlaceholder")}
                     placeholderTextColor="#9CA3AF"
                     value={plantName}
                     onChangeText={setPlantName}
@@ -427,10 +429,10 @@ export default function AddPlant() {
                 </View>
                 <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
                   <Text className="text-[#1F2937] font-bold text-base mb-1">
-                    Species (optional)
+                    {t("addPlant.species")}
                   </Text>
                   <TextInput
-                    placeholder="e.g. Monstera deliciosa"
+                    placeholder={t("addPlant.speciesPlaceholder")}
                     placeholderTextColor="#9CA3AF"
                     value={species}
                     onChangeText={setSpecies}
@@ -439,10 +441,10 @@ export default function AddPlant() {
                 </View>
                 <View className="bg-white rounded-2xl p-4 mb-6 shadow-sm">
                   <Text className="text-[#1F2937] font-bold text-base mb-1">
-                    Location (optional)
+                    {t("addPlant.location")}
                   </Text>
                   <TextInput
-                    placeholder="e.g. Living room"
+                    placeholder={t("addPlant.locationPlaceholder")}
                     placeholderTextColor="#9CA3AF"
                     value={location}
                     onChangeText={setLocation}
@@ -450,12 +452,12 @@ export default function AddPlant() {
                   />
                 </View>
                 <Text className="text-[#1F2937] font-bold text-xl mb-3 ml-1">
-                  Watering Schedule
+                  {t("addPlant.schedule")}
                 </Text>
                 <View className="bg-white rounded-3xl p-5 shadow-sm mb-8">
                   <View className="flex-row items-center justify-between mb-4">
                     <Text className="text-gray-500 text-base font-medium">
-                      Set Reminders
+                      {t("addPlant.setReminders")}
                     </Text>
                     <Switch
                       trackColor={{ false: "#6fa57677", true: "#5e7c46ff" }}
@@ -469,7 +471,7 @@ export default function AddPlant() {
                     <View className="mb-2">
                       <View className="flex-row items-center justify-between mb-4">
                         <Text className="text-[#1F2937] font-medium">
-                          Every
+                          {t("addPlant.every")}
                         </Text>
                         <View className="flex-row items-center">
                           <TouchableOpacity
@@ -502,12 +504,12 @@ export default function AddPlant() {
                             </Text>
                           </TouchableOpacity>
                         </View>
-                        <Text className="text-[#1F2937] font-medium">days</Text>
+                        <Text className="text-[#1F2937] font-medium">{t("addPlant.days")}</Text>
                       </View>
                       <View className="bg-[#F9F9F9] border border-gray-100 rounded-xl px-4 py-3 flex-row items-center justify-between">
                         <View>
                           <Text className="text-gray-500 text-xs mb-1">
-                            Preferred time
+                            {t("addPlant.preferredTime")}
                           </Text>
                           <TextInput
                             value={wateringTime}
@@ -540,7 +542,7 @@ export default function AddPlant() {
                   <Text
                     className={`font-bold text-lg ${isSaveDisabled ? "text-white/80" : "text-white"}`}
                   >
-                    {loading ? "Planting..." : "Save Plant"}
+                    {loading ? t("addPlant.planting") : t("addPlant.save")}
                   </Text>
                 </TouchableOpacity>
               </View>

@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
-import { useRouter } from "expo-router";
 import { MapPin, ShoppingBag, Star, Leaf } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -24,6 +23,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useI18n } from "../../context/I18nContext";
 
 const DEFAULT_REGION = {
   latitude: 44.4268,
@@ -130,7 +130,7 @@ const OSM_REQUEST_TIMEOUT_MS = 9000;
 const OSM_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export default function MarketplaceScreen() {
-  const router = useRouter();
+  const { t } = useI18n();
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [shops, setShops] = useState<NearbyShop[]>([]);
   const [allShopsByCategory, setAllShopsByCategory] = useState<
@@ -205,6 +205,14 @@ export default function MarketplaceScreen() {
     setModalTitle(title);
     setModalMessage(message);
     setModalVisible(true);
+  };
+
+  const getCategoryLabel = (categoryId: string) => {
+    if (categoryId === "plants") return t("marketplace.category.plants");
+    if (categoryId === "tools") return t("marketplace.category.tools");
+    if (categoryId === "care") return t("marketplace.category.care");
+    if (categoryId === "landscaping") return t("marketplace.category.landscaping");
+    return categoryId;
   };
 
   const applyRadiusFilter = (
@@ -367,10 +375,10 @@ export default function MarketplaceScreen() {
     const normalized = rawMessage.toLowerCase();
 
     if (normalized.includes("current location is unavailable")) {
-      return "Current location is unavailable right now. Move to an open area or turn on high-accuracy GPS, then refresh.";
+      return t("marketplace.locationUnavailable");
     }
 
-    return "We couldn't access your location right now. Please try refreshing again.";
+    return t("marketplace.locationAccessError");
   };
 
   const getPositionWithFallback = async () => {
@@ -821,7 +829,7 @@ out center tags;
     } catch (error) {
       console.error("Nearby shops (OSM) error:", error);
       setSearchErrorMessage(
-        "We couldn't load nearby shops right now. Please try refreshing in a few moments.",
+        t("marketplace.loadShopsError"),
       );
     } finally {
       setLoadingShops(false);
@@ -1045,10 +1053,10 @@ out center tags;
       <SafeAreaView className="flex-1 mt-4">
         <View className="items-center mb-6">
           <Text className="text-3xl font-bold text-white tracking-wider">
-            Marketplace
+            {t("marketplace.title")}
           </Text>
           <Text className="text-white/80 mt-2">
-            Find nearby shops and garden essentials
+            {t("marketplace.subtitle")}
           </Text>
         </View>
 
@@ -1057,7 +1065,7 @@ out center tags;
             <View className="flex-1 items-center justify-center">
               <ActivityIndicator size="large" color="#5F7A4B" />
               <Text className="text-sm text-gray-500 mt-3">
-                Detecting location...
+                {t("marketplace.detecting")}
               </Text>
             </View>
           ) : (
@@ -1069,7 +1077,7 @@ out center tags;
               <>
                 <View className="flex-row items-center justify-between mb-4">
                   <Text className="text-xl font-bold text-[#1F2937]">
-                    Shops Nearby
+                    {t("marketplace.shopsNearby")}
                   </Text>
                   {!locationDenied && !gpsDisabled && (
                     <TouchableOpacity
@@ -1078,7 +1086,7 @@ out center tags;
                     >
                       <Ionicons name="refresh" size={16} color="#5F7A4B" />
                       <Text className="ml-2 text-sm font-semibold text-[#5F7A4B]">
-                        Refresh
+                        {t("marketplace.refresh")}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -1091,29 +1099,29 @@ out center tags;
                     </View>
                     <Text className="text-base font-semibold text-[#1F2937] mb-2 text-center">
                       {locationDenied
-                        ? "Location permission needed"
-                        : "Location services disabled"}
+                        ? t("marketplace.permissionNeeded")
+                        : t("marketplace.servicesDisabled")}
                     </Text>
                     <Text className="text-sm text-gray-500 text-center mb-4">
                       {locationDenied
-                        ? "Enable location access to show your position and nearby shops."
-                        : "Turn on your device's location (GPS) to see nearby shops."}
+                        ? t("marketplace.permissionNeededMsg")
+                        : t("marketplace.servicesDisabledMsg")}
                     </Text>
                     <View className="w-full flex-row justify-center">
                       <TouchableOpacity
                         onPress={() => Linking.openSettings()}
                         className="bg-[#5F7A4B] px-5 py-2.5 rounded-full mr-3"
                       >
-                        <Text className="text-white font-semibold">
-                          Open Settings
+                        <Text numberOfLines={2} className="text-white font-semibold text-center">
+                          {t("account.openSettings")}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleRefresh()}
                         className="bg-white/80 px-5 py-2.5 rounded-full border border-gray-200"
                       >
-                        <Text className="text-[#1F2937] font-semibold">
-                          Refresh
+                        <Text numberOfLines={2} className="text-[#1F2937] font-semibold text-center">
+                          {t("marketplace.refresh")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -1128,7 +1136,7 @@ out center tags;
                       />
                     </View>
                     <Text className="text-base font-semibold text-[#1F2937] mb-2 text-center">
-                      Unable to load nearby shops
+                      {t("marketplace.unableToLoad")}
                     </Text>
                     <Text className="text-sm text-gray-500 text-center mb-4">
                       {searchErrorMessage}
@@ -1137,7 +1145,7 @@ out center tags;
                       onPress={() => handleRefresh()}
                       className="bg-[#5F7A4B] px-5 py-2.5 rounded-full"
                     >
-                      <Text className="text-white font-semibold">Refresh</Text>
+                      <Text numberOfLines={2} className="text-white font-semibold text-center">{t("marketplace.refresh")}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -1149,7 +1157,7 @@ out center tags;
                           className="items-center justify-center bg-[#EEF3E7]"
                         >
                           <Text className="text-sm text-gray-500 text-center px-4">
-                            Map preview is available on Android/iOS builds.
+                            {t("marketplace.mapPreview")}
                           </Text>
                         </View>
                       ) : (
@@ -1199,7 +1207,7 @@ out center tags;
                           <View className="flex-row items-center">
                             <Ionicons name="locate" size={16} color="#1F2937" />
                             <Text className="ml-2 text-xs font-semibold text-[#1F2937]">
-                              My location
+                              {t("marketplace.myLocation")}
                             </Text>
                           </View>
                         </TouchableOpacity>
@@ -1211,7 +1219,7 @@ out center tags;
                         <View className="flex-row items-center justify-between">
                           <View className="flex-1 pr-3">
                             <Text className="text-xs text-gray-500 mb-1">
-                              Selected point
+                              {t("marketplace.selectedPoint")}
                             </Text>
                             <Text className="text-sm font-semibold text-[#1F2937]">
                               {selectedMapShop.name}
@@ -1226,7 +1234,7 @@ out center tags;
                             className="bg-[#5F7A4B] px-4 py-2 rounded-full"
                           >
                             <Text className="text-xs text-white font-semibold">
-                              Open Maps
+                              {t("marketplace.openMaps")}
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1235,7 +1243,7 @@ out center tags;
 
                     <View className="mb-6">
                       <Text className="text-sm font-semibold text-[#1F2937] mb-2">
-                        Search radius
+                        {t("marketplace.searchRadius")}
                       </Text>
                       <View className="flex-row flex-wrap gap-2">
                         {RADIUS_OPTIONS.map((option) => {
@@ -1265,7 +1273,7 @@ out center tags;
 
                     <View className="mb-6">
                       <Text className="text-sm font-semibold text-[#1F2937] mb-2">
-                        Categories
+                        {t("marketplace.categories")}
                       </Text>
                       <View className="flex-row flex-wrap gap-2">
                         {SHOP_CATEGORIES.map((category) => {
@@ -1281,11 +1289,12 @@ out center tags;
                               }`}
                             >
                               <Text
+                                numberOfLines={1}
                                 className={`text-xs font-semibold ${
                                   isActive ? "text-white" : "text-[#1F2937]"
                                 }`}
                               >
-                                {category.label}
+                                {getCategoryLabel(category.id)}
                               </Text>
                             </TouchableOpacity>
                           );
@@ -1296,7 +1305,11 @@ out center tags;
                     <View className="mb-8">
                       <View className="bg-white/90 rounded-2xl px-4 py-3 mb-4 border border-white/70">
                         <Text className="text-sm font-semibold text-[#1F2937]">
-                          {totalFilteredResults} results • {activeCategoryCount} categories • {radiusMeters / 1000} km
+                          {t("marketplace.summary", {
+                            count: totalFilteredResults,
+                            categories: activeCategoryCount,
+                            radius: radiusMeters / 1000,
+                          })}
                         </Text>
                         <View className="flex-row mt-3">
                           <TouchableOpacity
@@ -1314,7 +1327,7 @@ out center tags;
                                   : "text-[#1F2937]"
                               }`}
                             >
-                              Relevance
+                              {t("marketplace.relevance")}
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -1332,7 +1345,7 @@ out center tags;
                                   : "text-[#1F2937]"
                               }`}
                             >
-                              Distance
+                              {t("marketplace.distance")}
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1342,15 +1355,13 @@ out center tags;
                         <View className="items-center py-6">
                           <ActivityIndicator size="small" color="#5F7A4B" />
                           <Text className="text-sm text-gray-500 mt-2">
-                            Loading nearby shops...
+                            {t("marketplace.loading")}
                           </Text>
                         </View>
                       ) : noResults ? (
                         <View className="items-center py-6">
                           <Text className="text-sm text-center text-gray-500">
-                            No garden-related shops were found in this area. Try
-                            expanding your search radius or enabling more
-                            categories.
+                            {t("marketplace.noResults")}
                           </Text>
                         </View>
                       ) : (
@@ -1378,11 +1389,12 @@ out center tags;
                                   }`}
                                 >
                                   <Text
+                                    numberOfLines={1}
                                     className={`text-xs font-semibold ${
                                       isSelected ? "text-white" : "text-[#1F2937]"
                                     }`}
                                   >
-                                    {category.label} ({count})
+                                    {getCategoryLabel(category.id)} ({count})
                                   </Text>
                                 </TouchableOpacity>
                               );
@@ -1392,12 +1404,12 @@ out center tags;
                           {selectedResultCategory ? (
                             <View>
                               <Text className="text-xs text-gray-500 mb-2 px-1">
-                                {selectedResultCategory.label} • showing all {selectedCategoryResults.length} results • sorted by {sortMode}
+                                {getCategoryLabel(selectedResultCategory.id)} • {selectedCategoryResults.length} • {sortMode === "distance" ? t("marketplace.distance") : t("marketplace.relevance")}
                               </Text>
                               {selectedCategoryResults.length === 0 ? (
                                 <View className="bg-white/90 rounded-2xl p-4">
                                   <Text className="text-sm text-gray-500 text-center">
-                                    No results in this category for current filters.
+                                    {t("marketplace.noResultsCategory")}
                                   </Text>
                                 </View>
                               ) : (
@@ -1419,7 +1431,7 @@ out center tags;
                                           {shop.name}
                                         </Text>
                                         <Text className="text-sm text-gray-500">
-                                          {shop.vicinity || "Address not available"}
+                                          {shop.vicinity || t("marketplace.addressMissing")}
                                         </Text>
                                       </View>
                                     </View>
@@ -1443,7 +1455,7 @@ out center tags;
                           ) : (
                             <View className="bg-white/90 rounded-2xl p-4">
                               <Text className="text-sm text-gray-500 text-center">
-                                Enable at least one category to see results.
+                                {t("marketplace.enableCategory")}
                               </Text>
                             </View>
                           )}
@@ -1491,8 +1503,8 @@ out center tags;
                   onPress={() => Linking.openSettings()}
                   className="flex-1 bg-white/80 py-3 rounded-xl items-center border border-gray-200"
                 >
-                  <Text className="text-[#1F2937] font-semibold">
-                    Open Settings
+                  <Text numberOfLines={2} className="text-[#1F2937] font-semibold text-center px-2">
+                    {t("account.openSettings")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1502,7 +1514,7 @@ out center tags;
                   }}
                   className="flex-1 bg-[#5F7A4B] py-3 rounded-xl items-center"
                 >
-                  <Text className="text-white font-semibold">Refresh</Text>
+                  <Text numberOfLines={2} className="text-white font-semibold text-center px-2">{t("marketplace.refresh")}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1510,7 +1522,7 @@ out center tags;
                 onPress={() => setModalVisible(false)}
                 className="mt-2 bg-[#5F7A4B] py-3 rounded-xl w-full items-center"
               >
-                <Text className="text-white font-semibold">OK</Text>
+                <Text numberOfLines={2} className="text-white font-semibold text-center px-2">{t("common.ok")}</Text>
               </TouchableOpacity>
             )}
           </TouchableOpacity>
@@ -1538,11 +1550,11 @@ out center tags;
             </View>
 
             <Text className="text-xl font-bold text-[#1F2937] mb-1 text-center">
-              Open in Maps?
+              {t("marketplace.openInMaps")}
             </Text>
             <Text className="text-gray-500 text-sm mb-4 font-medium text-center">
-              {selectedShop?.name || "Selected shop"}
-              {"\n"}Do you want directions to this location?
+              {selectedShop?.name || t("marketplace.selectedShop")}
+              {"\n"}{t("marketplace.directionsQuestion")}
             </Text>
 
             <View className="flex-row gap-3 w-full">
@@ -1550,7 +1562,7 @@ out center tags;
                 onPress={() => setMapModalVisible(false)}
                 className="flex-1 bg-white/80 py-3 rounded-xl items-center border border-gray-200"
               >
-                <Text className="text-[#1F2937] font-semibold">Cancel</Text>
+                <Text numberOfLines={2} className="text-[#1F2937] font-semibold text-center px-2">{t("account.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
@@ -1559,7 +1571,7 @@ out center tags;
                 }}
                 className="flex-1 bg-[#5F7A4B] py-3 rounded-xl items-center"
               >
-                <Text className="text-white font-semibold">Open Maps</Text>
+                <Text numberOfLines={2} className="text-white font-semibold text-center px-2">{t("marketplace.openMaps")}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>

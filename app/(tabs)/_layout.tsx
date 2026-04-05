@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { Bot, Home, ShoppingBag, Sprout, UserRound } from "lucide-react-native";
-import { PlantProvider } from "../../context/PlantContext";
+import { useI18n } from "../../context/I18nContext";
 
 // Define the standard icons for each route
 const TAB_ICONS: Record<string, React.FC<any>> = {
@@ -18,18 +18,8 @@ const TAB_ICONS: Record<string, React.FC<any>> = {
   account: UserRound,
 };
 
-// Map route names to display labels
-const TAB_LABELS: Record<string, string> = {
-  index: "Home",
-  myPlants: "Plants",
-  aiHelper: "AI",
-  marketplace: "Market",
-  account: "Account",
-};
-
-function TabBarButton({ route, isFocused, onPress, onLayout }: any) {
+function TabBarButton({ route, isFocused, onPress, onLayout, label }: any) {
   const Icon = TAB_ICONS[route.name];
-  const label = TAB_LABELS[route.name];
   
   if (!Icon) return null; // Skip hidden screens
 
@@ -44,10 +34,16 @@ function TabBarButton({ route, isFocused, onPress, onLayout }: any) {
       <View style={{ alignItems: "center" }}>
         <Icon size={22} color={isFocused ? "#FFFFFF" : "#8C8673"} />
         <Text
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
           style={{ 
-            fontSize: 10, 
+            fontSize: 10,
+            lineHeight: 11,
             fontWeight: "700", 
             marginTop: 4,
+            maxWidth: 62,
+            textAlign: "center",
             color: isFocused ? "#FFFFFF" : "#8C8673"
           }}
         >
@@ -59,7 +55,16 @@ function TabBarButton({ route, isFocused, onPress, onLayout }: any) {
 }
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  const { t } = useI18n();
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
+
+  const tabLabels: Record<string, string> = {
+    index: t("tabs.home"),
+    myPlants: t("tabs.plants"),
+    aiHelper: t("tabs.ai"),
+    marketplace: t("tabs.market"),
+    account: t("tabs.account"),
+  };
   
   // Calculate the width of a single tab dynamically based on visible routes
   const visibleRoutesCount = state.routes.filter((r: any) => TAB_ICONS[r.name]).length;
@@ -157,6 +162,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               route={route}
               isFocused={isFocused}
               onPress={onPress}
+              label={tabLabels[route.name]}
             />
           );
         })}
