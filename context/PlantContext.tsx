@@ -478,9 +478,6 @@ export const PlantProvider = ({ children }: { children: ReactNode }) => {
     let scheduledCount = 0;
     for (const plant of fetchedPlants) {
       if (plant.watering && plant.watering.enabled) {
-        // Notă: Aici generăm ID-uri noi pentru device-ul curent.
-        // Nu le salvăm în DB pentru că DB-ul are deja ID-uri (poate de pe alt device).
-        // Asta e o limitare a notificărilor locale, dar e ok pentru MVP.
         await scheduleWateringNotification(
           plant.name,
           plant.watering.frequency,
