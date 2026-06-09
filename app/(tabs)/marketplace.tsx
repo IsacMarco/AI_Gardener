@@ -486,7 +486,36 @@ export default function MarketplaceScreen() {
       return t("marketplace.locationUnavailable");
     }
 
+    if (normalized.includes("timed out") || normalized.includes("timeout")) {
+      return t("marketplace.locationUnavailable");
+    }
+
     return t("marketplace.locationAccessError");
+  };
+
+  const handleLocationFailure = async (error: unknown) => {
+    const rawMessage =
+      error instanceof Error ? error.message : String(error || "");
+    const normalized = rawMessage.toLowerCase();
+    const isTimeout =
+      normalized.includes("timed out") || normalized.includes("timeout");
+
+    let servicesEnabled = true;
+    try {
+      servicesEnabled = await Location.hasServicesEnabledAsync();
+    } catch {
+      servicesEnabled = true;
+    }
+
+    if (!servicesEnabled || isTimeout) {
+      setGpsDisabled(true);
+      setLocationDenied(false);
+      clearLoadedShops();
+      setSearchErrorMessage(null);
+      return true;
+    }
+
+    return false;
   };
 
   const getCurrentPositionWithTimeout = async () => {
@@ -1029,8 +1058,11 @@ out center tags;
       });
       setSearchErrorMessage(null);
     } catch (error) {
-      console.error("Location error:", error);
-      setSearchErrorMessage(getLocationErrorMessage(error));
+      const handled = await handleLocationFailure(error);
+      if (!handled) {
+        console.error("Location error:", error);
+        setSearchErrorMessage(getLocationErrorMessage(error));
+      }
     } finally {
       setLoadingLocation(false);
       setInitialLoading(false);
@@ -1084,8 +1116,11 @@ out center tags;
       });
       setSearchErrorMessage(null);
     } catch (error) {
-      console.error("Refresh location error:", error);
-      setSearchErrorMessage(getLocationErrorMessage(error));
+      const handled = await handleLocationFailure(error);
+      if (!handled) {
+        console.error("Refresh location error:", error);
+        setSearchErrorMessage(getLocationErrorMessage(error));
+      }
     } finally {
       setLoadingLocation(false);
     }
