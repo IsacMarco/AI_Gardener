@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Directory, File, Paths } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -42,9 +41,12 @@ import {
 import { usePlants } from "../../context/PlantContext";
 import { useI18n } from "../../context/I18nContext";
 
-const genAI = new GoogleGenerativeAI(
-  process.env.EXPO_PUBLIC_GEMINI_API_KEY || "",
-);
+import {
+  initializeLocalModel,
+  generateResponse,
+  releaseLocalModel,
+  type ModelStatus,
+} from "../../services/localLlm";
 
 // Prompt-ul de sistem
 const SYSTEM_PROMPT = `
@@ -237,6 +239,7 @@ export default function AiHelperScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedBase64, setSelectedBase64] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [modelStatus, setModelStatus] = useState<ModelStatus>("idle");
   const [conversations, setConversations] = useState<Conversation[]>(() => [
     createDefaultConversation(t("ai.chat.welcome")),
   ]);
@@ -589,35 +592,22 @@ export default function AiHelperScreen() {
     }
   };
 
-  // useEffect(() => {
-  //   const listModels = async () => {
-  //     try {
-  //       // ATENTIE: Asta necesita un import diferit, dar pentru test rapid
-  //       // putem incerca un fetch direct daca SDK-ul face figuri.
-  //       const response = await fetch(
-  //         `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.EXPO_PUBLIC_GEMINI_API_KEY}`,
-  //       );
-  //       const data = await response.json();
-  //       console.log("=== AVAILABLE GEMINI MODELS ===");
-  //       // AfisAm doar numele modelelor
-  //       if (data.models) {
-  //         data.models.forEach((m: any) => console.log(m.name));
-  //       } else {
-  //         console.log("No models found or error:", data);
-  //       }
-  //       console.log("===============================");
-  //     } catch (e) {
-  //       console.error("Error listing models:", e);
-  //     }
-  //   };
+  // Track whether the user is near the bottom of the chat
+  const isNearBottomRef = useRef(true);
 
-  //   listModels();
-  // }, []);
-  // Auto-scroll
+  const handleScroll = (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    isNearBottomRef.current = distanceFromBottom < 80;
+  };
+
+  // Auto-scroll only when user is near the bottom (don't fight manual scrolling)
   useEffect(() => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    if (isNearBottomRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
   }, [activeConversationId, messages, selectedImage, isTyping]);
 
   useEffect(() => {
@@ -643,10 +633,29 @@ export default function AiHelperScreen() {
     }, 140);
   }, [activeConversationId, conversations.length, showConversationPicker]);
 
+  // Initialize the local LLM on mount
   useEffect(() => {
+    let isMounted = true;
+
+    const loadModel = async () => {
+      try {
+        await initializeLocalModel((status) => {
+          if (isMounted) setModelStatus(status);
+        });
+        if (isMounted) setModelStatus("ready");
+      } catch (error) {
+        console.error("Failed to initialize local model:", error);
+        if (isMounted) setModelStatus("error");
+      }
+    };
+
+    loadModel();
+
     return () => {
+      isMounted = false;
       Keyboard.dismiss();
       ExpoSpeechRecognitionModule.stop();
+      releaseLocalModel();
     };
   }, []);
 
@@ -795,60 +804,99 @@ export default function AiHelperScreen() {
     setIsTyping(true);
 
     try {
-      const model = genAI.getGenerativeModel({
-        model: "gemma-4-26b-a4b-it",
+      // Build ChatML-compatible messages array
+      // llama.rn will auto-apply the ChatML template from the model's GGUF metadata:
+      //   <|im_start|>system\n{content}<|im_end|>
+      //   <|im_start|>user\n{content}<|im_end|>
+      //   <|im_start|>assistant\n{content}<|im_end|>
+      const chatMessages: { role: string; content: string }[] = [];
+
+      // System message: combine the system prompt with plants context
+      chatMessages.push({
+        role: "system",
+        content: SYSTEM_PROMPT.trim() + "\n\n" + plantsContextForPrompt,
       });
-      const promptParts: any[] = [];
 
-      promptParts.push(SYSTEM_PROMPT);
-      promptParts.push(plantsContextForPrompt);
+      // Conversation history as alternating user/assistant messages
+      // Skip the first welcome message (it's synthetic, not from the model)
+      const historyMessages = messages.filter(
+        (msg) => !(msg.sender === "ai" && msg.id === "1"),
+      );
 
-      const historyContext = messages
-        .map((msg) => {
-          const role = msg.sender === "user" ? "User" : "AI Gardener";
-          const content = msg.text || "[User sent a photo]";
-          return `${role}: ${content}`;
-        })
-        .join("\n");
-
-      if (historyContext) {
-        promptParts.push(
-          "\n=== CONVERSATION HISTORY ===\n" +
-            historyContext +
-            "\n==========================\n",
-        );
-      }
-
-      if (currentText) {
-        promptParts.push("\nUser Current Question: " + currentText);
-      } else if (currentBase64) {
-        promptParts.push("\nUser Current Question: Analyze this image.");
-      }
-
-      if (currentBase64) {
-        promptParts.push({
-          inlineData: {
-            data: currentBase64,
-            mimeType: "image/jpeg",
-          },
+      for (const msg of historyMessages) {
+        chatMessages.push({
+          role: msg.sender === "user" ? "user" : "assistant",
+          content: msg.text || "[User sent a photo]",
         });
       }
 
-      const result = await model.generateContent(promptParts);
-      const response = await result.response;
-      const text = response.text();
+      // Current user message
+      const userContent = currentText
+        ? currentText
+        : currentBase64
+          ? "Analyze this image."
+          : "";
 
+      if (userContent) {
+        chatMessages.push({
+          role: "user",
+          content: userContent,
+        });
+      }
+
+      // Create a placeholder AI message for streaming
+      const aiMsgId = (Date.now() + 1).toString();
       const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: aiMsgId,
         sender: "ai",
-        text: text,
+        text: "",
       };
       updateActiveConversationMessages((previousMessages) => [
         ...previousMessages,
         aiMsg,
       ]);
+
+      // Batch token updates to keep UI responsive during generation
+      // Tokens accumulate in a variable and flush to state every 100ms
+      let pendingTokens = "";
+      const flushInterval = setInterval(() => {
+        if (pendingTokens.length > 0) {
+          const tokensToFlush = pendingTokens;
+          pendingTokens = "";
+          updateActiveConversationMessages((previousMessages) =>
+            previousMessages.map((msg) =>
+              msg.id === aiMsgId
+                ? { ...msg, text: (msg.text || "") + tokensToFlush }
+                : msg,
+            ),
+          );
+        }
+      }, 100);
+
+      // Stream tokens from the local model
+      await generateResponse(
+        chatMessages,
+        (token: string) => {
+          pendingTokens += token;
+        },
+        currentBase64,
+      );
+
+      // Flush any remaining tokens after generation completes
+      clearInterval(flushInterval);
+      if (pendingTokens.length > 0) {
+        const remainingTokens = pendingTokens;
+        pendingTokens = "";
+        updateActiveConversationMessages((previousMessages) =>
+          previousMessages.map((msg) =>
+            msg.id === aiMsgId
+              ? { ...msg, text: (msg.text || "") + remainingTokens }
+              : msg,
+          ),
+        );
+      }
     } catch (error) {
-      console.error("Gemini Error:", error);
+      console.error("Local LLM Error:", error);
       const errorMsg: Message = {
         id: Date.now().toString(),
         sender: "ai",
@@ -863,7 +911,7 @@ export default function AiHelperScreen() {
     }
   };
 
-  const canSend = inputText.length > 0 || selectedImage !== null;
+  const canSend = (inputText.length > 0 || selectedImage !== null) && modelStatus === "ready";
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -929,6 +977,8 @@ export default function AiHelperScreen() {
               showsVerticalScrollIndicator={false}
               keyboardDismissMode="on-drag"
               contentContainerStyle={{ paddingBottom: 20 }}
+              onScroll={handleScroll}
+              scrollEventThrottle={100}
             >
             {messages.map((msg) => {
               const isAi = msg.sender === "ai";
@@ -989,6 +1039,37 @@ export default function AiHelperScreen() {
                 }}
               >
                 <ActivityIndicator color="#5F7A4B" size="small" />
+              </View>
+            )}
+
+            {(modelStatus === "copying" || modelStatus === "loading") && (
+              <View
+                className="bg-[#C4DBB3]/60 p-4 rounded-2xl self-center mb-4 items-center"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 3,
+                  elevation: 2,
+                }}
+              >
+                <ActivityIndicator color="#5F7A4B" size="small" />
+                <Text className="text-[#5F7A4B] text-xs mt-2 font-medium">
+                  {modelStatus === "copying"
+                    ? t("ai.chat.copyingModel") || "Preparing AI model..."
+                    : t("ai.chat.loadingModel") || "Loading AI model..."}
+                </Text>
+              </View>
+            )}
+
+            {modelStatus === "error" && (
+              <View
+                className="bg-red-100 p-4 rounded-2xl self-center mb-4 items-center"
+              >
+                <AlertCircle size={20} color="#ef4444" />
+                <Text className="text-red-600 text-xs mt-2 font-medium text-center">
+                  {t("ai.chat.modelError") || "Failed to load AI model. Please restart the app."}
+                </Text>
               </View>
             )}
             </ScrollView>

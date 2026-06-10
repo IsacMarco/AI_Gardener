@@ -3,6 +3,7 @@
 .vscode/
 # dependencies
 node_modules/
+assets/qwen_finetune_mobile_gguf/
 
 # Expo
 .expo/

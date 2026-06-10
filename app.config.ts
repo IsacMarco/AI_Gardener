@@ -68,7 +68,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-speech-recognition",
-    "@maplibre/maplibre-react-native"
+    "@maplibre/maplibre-react-native",
+    [
+      "llama.rn",
+      {
+        "enableEntitlements": true,
+      },
+    ],
+    "./plugins/withGgufAssets",
+    "./plugins/withAssetCopy",
   ],
   experiments: {
     typedRoutes: true,

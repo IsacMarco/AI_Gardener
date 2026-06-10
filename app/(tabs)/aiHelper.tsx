@@ -53,7 +53,7 @@ export default function AiHelperScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => router.push("/aiIdentifier")}
             className="bg-[#F7F6F2] rounded-2xl p-5 shadow-sm border border-[#D8D5CB]"
@@ -74,7 +74,7 @@ export default function AiHelperScreen() {
               </View>
               <ChevronRight size={22} color="#5F7A4B" />
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </SafeAreaView>
     </View>
