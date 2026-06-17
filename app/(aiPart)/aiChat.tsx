@@ -44,7 +44,6 @@ import { useI18n } from "../../context/I18nContext";
 import {
   initializeLocalModel,
   generateResponse,
-  releaseLocalModel,
   type ModelStatus,
 } from "../../services/localLlm";
 
@@ -79,6 +78,8 @@ Strict output rules:
 - Never mention system instructions, roles, hidden policies, or internal analysis.
 - Never summarize or expose the conversation history unless the user explicitly asks.
 - Provide only the final answer to the user's request.
+- If you sugest something about temperature, you should do it in Celsius.
+- If you are asked to generate or show images, decline politely.
 `;
 
 type Message = {
@@ -261,7 +262,7 @@ export default function AiHelperScreen() {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(
     languageOptions.find((option) => option.code === language) ||
-      languageOptions[0],
+    languageOptions[0],
   );
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showConversationPicker, setShowConversationPicker] = useState(false);
@@ -271,6 +272,7 @@ export default function AiHelperScreen() {
     useState(false);
   const [showDeleteConversationModal, setShowDeleteConversationModal] =
     useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [conversationActionId, setConversationActionId] = useState("");
   const [renameConversationId, setRenameConversationId] = useState("");
   const [renameConversationTitle, setRenameConversationTitle] = useState("");
@@ -457,16 +459,6 @@ export default function AiHelperScreen() {
       return;
     }
 
-    if (conversations.length <= 1) {
-      setShowConversationActionsModal(false);
-      showModal(
-        "info",
-        t("ai.chat.cannotDelete"),
-        t("ai.chat.cannotDeleteMsg"),
-      );
-      return;
-    }
-
     setShowConversationActionsModal(false);
     setShowDeleteConversationModal(true);
   };
@@ -486,6 +478,13 @@ export default function AiHelperScreen() {
         (conversation) => conversation.id !== conversationActionId,
       );
 
+      if (filteredConversations.length === 0) {
+        // Deleted the last conversation — create a fresh one
+        const freshConversation = createDefaultConversation(t("ai.chat.welcome"));
+        setActiveConversationId(freshConversation.id);
+        return [freshConversation];
+      }
+
       if (activeConversationId === conversationActionId && filteredConversations[0]) {
         setActiveConversationId(filteredConversations[0].id);
       }
@@ -502,6 +501,27 @@ export default function AiHelperScreen() {
 
     setShowDeleteConversationModal(false);
     setConversationActionId("");
+    void deleteManagedImageIfExists(selectedImage);
+    setSelectedImage(null);
+    setSelectedBase64(null);
+  };
+
+  const confirmDeleteAllConversations = async () => {
+    // Collect all image URIs from all conversations for cleanup
+    const allImageUris = conversations.flatMap(collectConversationImageUris);
+
+    // Reset to a single fresh conversation
+    const freshConversation = createDefaultConversation(t("ai.chat.welcome"));
+    setConversations([freshConversation]);
+    setActiveConversationId(freshConversation.id);
+
+    // Clean up managed images
+    await Promise.all(
+      allImageUris.map((uri) => deleteManagedImageIfExists(uri)),
+    );
+
+    setShowDeleteAllModal(false);
+    setShowConversationPicker(false);
     void deleteManagedImageIfExists(selectedImage);
     setSelectedImage(null);
     setSelectedBase64(null);
@@ -655,7 +675,6 @@ export default function AiHelperScreen() {
       isMounted = false;
       Keyboard.dismiss();
       ExpoSpeechRecognitionModule.stop();
-      releaseLocalModel();
     };
   }, []);
 
@@ -663,7 +682,7 @@ export default function AiHelperScreen() {
     type: "error" | "info" | "selection" | "voice-error",
     title: string,
     message: string,
-    onConfirm = () => {},
+    onConfirm = () => { },
   ) => {
     setModalConfig({ type, title, message, onConfirm });
     setModalVisible(true);
@@ -714,9 +733,9 @@ export default function AiHelperScreen() {
     const launchCamera = async () => {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        quality: 0.5,
-        base64: true,
+        quality: 0.4,
         allowsEditing: true,
+        exif: false,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
         const persistedImageUri = await persistImageUri(result.assets[0].uri);
@@ -724,7 +743,6 @@ export default function AiHelperScreen() {
           void deleteManagedImageIfExists(selectedImage);
         }
         setSelectedImage(persistedImageUri);
-        setSelectedBase64(result.assets[0].base64 || null);
       }
     };
 
@@ -763,9 +781,9 @@ export default function AiHelperScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.5, // reduce quality for faster uploads and smaller size
-      base64: true,
+      quality: 0.4,
       allowsEditing: true,
+      exif: false,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
       const persistedImageUri = await persistImageUri(result.assets[0].uri);
@@ -773,7 +791,6 @@ export default function AiHelperScreen() {
         void deleteManagedImageIfExists(selectedImage);
       }
       setSelectedImage(persistedImageUri);
-      setSelectedBase64(result.assets[0].base64 || null);
     }
   };
 
@@ -793,7 +810,7 @@ export default function AiHelperScreen() {
     };
 
     const currentText = inputText;
-    const currentBase64 = selectedBase64;
+    const currentImageUri = selectedImage;
 
     const newMessages = [...messages, userMsg];
     updateActiveConversationMessages(newMessages);
@@ -805,16 +822,12 @@ export default function AiHelperScreen() {
 
     try {
       // Build ChatML-compatible messages array
-      // llama.rn will auto-apply the ChatML template from the model's GGUF metadata:
-      //   <|im_start|>system\n{content}<|im_end|>
-      //   <|im_start|>user\n{content}<|im_end|>
-      //   <|im_start|>assistant\n{content}<|im_end|>
       const chatMessages: { role: string; content: string }[] = [];
 
-      // System message: combine the system prompt with plants context
+      // System message
       chatMessages.push({
         role: "system",
-        content: SYSTEM_PROMPT.trim() + "\n\n" + plantsContextForPrompt,
+        content: SYSTEM_PROMPT.trim(),
       });
 
       // Conversation history as alternating user/assistant messages
@@ -830,11 +843,23 @@ export default function AiHelperScreen() {
         });
       }
 
+      // Inject the user's plants data as context right before the question
+      if (plants && plants.length > 0) {
+        chatMessages.push({
+          role: "user",
+          content: "Here are my saved plants:\n" + plantsContextForPrompt,
+        });
+        chatMessages.push({
+          role: "assistant",
+          content: "Got it! I can see your saved plants. How can I help you with them?",
+        });
+      }
+
       // Current user message
       const userContent = currentText
         ? currentText
-        : currentBase64
-          ? "Analyze this image."
+        : currentImageUri
+          ? "Analyze this leaf. Identify the plant species, determine if it is healthy or diseased, and describe any visible symptoms."
           : "";
 
       if (userContent) {
@@ -879,7 +904,7 @@ export default function AiHelperScreen() {
         (token: string) => {
           pendingTokens += token;
         },
-        currentBase64,
+        currentImageUri,
       );
 
       // Flush any remaining tokens after generation completes
@@ -980,184 +1005,157 @@ export default function AiHelperScreen() {
               onScroll={handleScroll}
               scrollEventThrottle={100}
             >
-            {messages.map((msg) => {
-              const isAi = msg.sender === "ai";
+              {messages.map((msg) => {
+                const isAi = msg.sender === "ai";
 
-              return (
-                <View
-                  key={msg.id}
-                  className={`mb-6 rounded-2xl shadow-sm overflow-hidden ${
-                    msg.imageUri ? "p-0" : "p-3"
-                  } ${
-                    isAi
-                      ? "bg-[#C4DBB3] rounded-tl-none self-start"
-                      : "bg-[#F3F4F6] rounded-tr-none self-end"
-                  }`}
-                  style={{
-                    maxWidth: "85%",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.14,
-                    shadowRadius: 4,
-                    elevation: 3,
-                  }}
-                >
-                  {msg.imageUri && (
-                    <View className="bg-white rounded-xl overflow-hidden mb-3 items-center justify-center">
-                      <Image
-                        source={{ uri: msg.imageUri }}
-                        style={{ width: 200, height: 200, borderRadius: 10 }}
-                        resizeMode="cover"
-                      />
-                    </View>
-                  )}
+                return (
+                  <View
+                    key={msg.id}
+                    className={`mb-6 rounded-2xl shadow-sm overflow-hidden ${msg.imageUri ? "p-0" : "p-3"
+                      } ${isAi
+                        ? "bg-[#C4DBB3] rounded-tl-none self-start"
+                        : "bg-[#F3F4F6] rounded-tr-none self-end"
+                      }`}
+                    style={{
+                      maxWidth: "85%",
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.14,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                  >
+                    {msg.imageUri && (
+                      <View className="bg-white rounded-xl overflow-hidden mb-3 items-center justify-center">
+                        <Image
+                          source={{ uri: msg.imageUri }}
+                          style={{ width: 200, height: 200, borderRadius: 10 }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    )}
 
-                  {msg.text && (
-                    <View className={msg.imageUri ? "p-3" : ""}>
-                      {isAi ? (
-                        <MarkdownText content={msg.text} />
-                      ) : (
-                        <Text className="text-[#1F2937] text-base leading-6">
-                          {msg.text}
-                        </Text>
-                      )}
-                    </View>
-                  )}
+                    {msg.text && (
+                      <View className={msg.imageUri ? "p-3" : ""}>
+                        {isAi ? (
+                          <MarkdownText content={msg.text} />
+                        ) : (
+                          <Text className="text-[#1F2937] text-base leading-6">
+                            {msg.text}
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
+              {isTyping && (
+                <View className="self-start mb-6 px-1">
+                  <Text className="text-[#5F7A4B] text-xs font-medium italic">
+                    {t("ai.chat.generatingResponse")}
+                  </Text>
                 </View>
-              );
-            })}
+              )}
 
-            {isTyping && (
-              <View
-                className="bg-[#C4DBB3] p-3 rounded-2xl rounded-tl-none self-start mb-6 shadow-sm w-16 items-center"
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.14,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
-              >
-                <ActivityIndicator color="#5F7A4B" size="small" />
-              </View>
-            )}
 
-            {(modelStatus === "copying" || modelStatus === "loading") && (
-              <View
-                className="bg-[#C4DBB3]/60 p-4 rounded-2xl self-center mb-4 items-center"
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 3,
-                  elevation: 2,
-                }}
-              >
-                <ActivityIndicator color="#5F7A4B" size="small" />
-                <Text className="text-[#5F7A4B] text-xs mt-2 font-medium">
-                  {modelStatus === "copying"
-                    ? t("ai.chat.copyingModel") || "Preparing AI model..."
-                    : t("ai.chat.loadingModel") || "Loading AI model..."}
-                </Text>
-              </View>
-            )}
 
-            {modelStatus === "error" && (
-              <View
-                className="bg-red-100 p-4 rounded-2xl self-center mb-4 items-center"
-              >
-                <AlertCircle size={20} color="#ef4444" />
-                <Text className="text-red-600 text-xs mt-2 font-medium text-center">
-                  {t("ai.chat.modelError") || "Failed to load AI model. Please restart the app."}
-                </Text>
-              </View>
-            )}
+              {modelStatus === "error" && (
+                <View
+                  className="bg-red-100 p-4 rounded-2xl self-center mb-4 items-center"
+                >
+                  <AlertCircle size={20} color="#ef4444" />
+                  <Text className="text-red-600 text-xs mt-2 font-medium text-center">
+                    {t("ai.chat.modelError") || "Failed to load AI model. Please restart the app."}
+                  </Text>
+                </View>
+              )}
             </ScrollView>
 
             <View className="px-4 pt-2 pb-4">
-            {selectedImage && (
-              <View className="bg-white/90 p-2 rounded-2xl mb-2 self-start relative shadow-sm ml-1 border border-white/20">
-                <Image
-                  source={{ uri: selectedImage }}
-                  style={{ width: 80, height: 80, borderRadius: 12 }}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  onPress={() => {
-                    void deleteManagedImageIfExists(selectedImage);
-                    setSelectedImage(null);
-                    setSelectedBase64(null);
-                  }}
-                  className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1.5 border-2 border-white shadow-sm"
-                >
-                  <X size={12} color="white" strokeWidth={3} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <View className="bg-white flex-row items-center px-4 rounded-[24px] shadow-sm min-h-[54px]">
-              <TouchableOpacity
-                onPress={handleAddPhoto}
-                activeOpacity={0.7}
-                className="mr-3"
-              >
-                <Camera size={24} color="#5F7A4B" />
-              </TouchableOpacity>
-
-              <TextInput
-                className="flex-1 text-base text-[#374151]"
-                placeholder={
-                  isRecognizing ? t("ai.chat.listening") : t("home.askAnything")
-                }
-                placeholderTextColor={isRecognizing ? "#ef4444" : "#A0A0A0"}
-                multiline
-                style={{
-                  paddingTop: 12,
-                  paddingBottom: 12,
-                  maxHeight: 120,
-                }}
-                value={inputText}
-                onChangeText={setInputText}
-              />
-
-              <TouchableOpacity
-                onPress={() => setShowLanguagePicker(true)}
-                activeOpacity={0.7}
-                className="mr-2 flex-row items-center bg-gray-100 px-2 py-1.5 rounded-lg"
-              >
-                <Globe size={14} color="#5F7A4B" />
-                <Text className="text-xs font-bold text-[#5F7A4B] ml-1">
-                  {selectedLanguage.short}
-                </Text>
-                <ChevronDown size={12} color="#5F7A4B" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleMicrophonePress}
-                activeOpacity={0.7}
-              >
-                {isRecognizing ? (
-                  <View className="bg-red-100 p-2 rounded-full animate-pulse">
-                    <StopCircle size={24} color="#ef4444" fill="#ef4444" />
-                  </View>
-                ) : (
-                  <Mic size={24} color="#5F7A4B" />
-                )}
-              </TouchableOpacity>
-
-              {canSend && !isRecognizing && (
-                <TouchableOpacity onPress={sendMessage} className="ml-3">
-                  <View className="bg-[#5F7A4B]/10 p-2 rounded-full">
-                    <Send
-                      size={20}
-                      color="#5F7A4B"
-                      fill="#5F7A4B"
-                      style={{ marginLeft: 2 }}
-                    />
-                  </View>
-                </TouchableOpacity>
+              {selectedImage && (
+                <View className="bg-white/90 p-2 rounded-2xl mb-2 self-start relative shadow-sm ml-1 border border-white/20">
+                  <Image
+                    source={{ uri: selectedImage }}
+                    style={{ width: 80, height: 80, borderRadius: 12 }}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      void deleteManagedImageIfExists(selectedImage);
+                      setSelectedImage(null);
+                      setSelectedBase64(null);
+                    }}
+                    className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1.5 border-2 border-white shadow-sm"
+                  >
+                    <X size={12} color="white" strokeWidth={3} />
+                  </TouchableOpacity>
+                </View>
               )}
-            </View>
+
+              <View className="bg-white flex-row items-center px-4 rounded-[24px] shadow-sm min-h-[54px]">
+                <TouchableOpacity
+                  onPress={handleAddPhoto}
+                  activeOpacity={0.7}
+                  className="mr-3"
+                >
+                  <Camera size={24} color="#5F7A4B" />
+                </TouchableOpacity>
+
+                <TextInput
+                  className="flex-1 text-base text-[#374151]"
+                  placeholder={
+                    isRecognizing ? t("ai.chat.listening") : t("home.askAnything")
+                  }
+                  placeholderTextColor={isRecognizing ? "#ef4444" : "#A0A0A0"}
+                  multiline
+                  style={{
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                    maxHeight: 120,
+                  }}
+                  value={inputText}
+                  onChangeText={setInputText}
+                />
+
+                <TouchableOpacity
+                  onPress={() => setShowLanguagePicker(true)}
+                  activeOpacity={0.7}
+                  className="mr-2 flex-row items-center bg-gray-100 px-2 py-1.5 rounded-lg"
+                >
+                  <Globe size={14} color="#5F7A4B" />
+                  <Text className="text-xs font-bold text-[#5F7A4B] ml-1">
+                    {selectedLanguage.short}
+                  </Text>
+                  <ChevronDown size={12} color="#5F7A4B" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleMicrophonePress}
+                  activeOpacity={0.7}
+                >
+                  {isRecognizing ? (
+                    <View className="bg-red-100 p-2 rounded-full animate-pulse">
+                      <StopCircle size={24} color="#ef4444" fill="#ef4444" />
+                    </View>
+                  ) : (
+                    <Mic size={24} color="#5F7A4B" />
+                  )}
+                </TouchableOpacity>
+
+                {canSend && !isRecognizing && (
+                  <TouchableOpacity onPress={sendMessage} className="ml-3">
+                    <View className="bg-[#5F7A4B]/10 p-2 rounded-full">
+                      <Send
+                        size={20}
+                        color="#5F7A4B"
+                        fill="#5F7A4B"
+                        style={{ marginLeft: 2 }}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -1195,27 +1193,24 @@ export default function AiHelperScreen() {
                     setSelectedLanguage(lang);
                     setShowLanguagePicker(false);
                   }}
-                  className={`flex-row items-center justify-between p-4 rounded-xl ${
-                    selectedLanguage.code === lang.code
-                      ? "bg-[#5F7A4B]"
-                      : "bg-gray-100"
-                  }`}
+                  className={`flex-row items-center justify-between p-4 rounded-xl ${selectedLanguage.code === lang.code
+                    ? "bg-[#5F7A4B]"
+                    : "bg-gray-100"
+                    }`}
                 >
                   <Text
-                    className={`font-medium text-base ${
-                      selectedLanguage.code === lang.code
-                        ? "text-white"
-                        : "text-[#1F2937]"
-                    }`}
+                    className={`font-medium text-base ${selectedLanguage.code === lang.code
+                      ? "text-white"
+                      : "text-[#1F2937]"
+                      }`}
                   >
                     {lang.label}
                   </Text>
                   <Text
-                    className={`font-bold ${
-                      selectedLanguage.code === lang.code
-                        ? "text-white/70"
-                        : "text-gray-400"
-                    }`}
+                    className={`font-bold ${selectedLanguage.code === lang.code
+                      ? "text-white/70"
+                      : "text-gray-400"
+                      }`}
                   >
                     {lang.short}
                   </Text>
@@ -1275,16 +1270,14 @@ export default function AiHelperScreen() {
                       conversationItemOffsetsRef.current[conversation.id] =
                         event.nativeEvent.layout.y;
                     }}
-                    className={`flex-row items-center justify-between p-4 rounded-xl border ${
-                      isActive
-                        ? "bg-[#EAF3E3] border-[#5F7A4B]/40"
-                        : "bg-gray-100 border-transparent"
-                    }`}
+                    className={`flex-row items-center justify-between p-4 rounded-xl border ${isActive
+                      ? "bg-[#EAF3E3] border-[#5F7A4B]/40"
+                      : "bg-gray-100 border-transparent"
+                      }`}
                   >
                     <Text
-                      className={`font-medium text-base ${
-                        isActive ? "text-[#2F4A1F]" : "text-[#1F2937]"
-                      }`}
+                      className={`font-medium text-base ${isActive ? "text-[#2F4A1F]" : "text-[#1F2937]"
+                        }`}
                     >
                       {conversation.title}
                     </Text>
@@ -1306,6 +1299,16 @@ export default function AiHelperScreen() {
               <Ionicons name="add" size={18} color="white" />
               <Text className="text-white font-bold text-base ml-2">{t("ai.chat.newChat")}</Text>
             </TouchableOpacity>
+
+            {conversations.length > 1 && (
+              <TouchableOpacity
+                onPress={() => setShowDeleteAllModal(true)}
+                className="mt-2 bg-[#ef4444] w-full py-3.5 rounded-xl flex-row justify-center items-center"
+              >
+                <Ionicons name="trash-outline" size={18} color="white" />
+                <Text className="text-white font-bold text-base ml-2">{t("ai.chat.deleteAll")}</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               onPress={() => setShowConversationPicker(false)}
@@ -1538,6 +1541,74 @@ export default function AiHelperScreen() {
                 </Text>
               </TouchableOpacity>
             )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Model Loading Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modelStatus === "copying" || modelStatus === "loading"}
+      >
+        <View className="flex-1 justify-center items-center bg-black/60 px-6">
+          <View className="bg-white w-full max-w-sm rounded-[24px] p-8 shadow-2xl items-center">
+            <Text style={{ fontSize: 48, marginBottom: 16 }}>🌱</Text>
+            <Text className="text-2xl font-bold text-[#1F2937] mb-2 text-center">
+              {t("ai.chat.modelLoadingTitle")}
+            </Text>
+            <Text className="text-sm text-gray-400 font-medium mb-6 text-center leading-5">
+              {t("ai.chat.modelLoadingSubtitle")}
+            </Text>
+            <ActivityIndicator color="#5F7A4B" size="large" />
+            <Text className="text-[#5F7A4B] text-sm mt-4 font-semibold">
+              {modelStatus === "copying"
+                ? t("ai.chat.copyingModel")
+                : t("ai.chat.loadingModel")}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete All Conversations Confirmation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showDeleteAllModal}
+        onRequestClose={() => setShowDeleteAllModal(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowDeleteAllModal(false)}
+          className="flex-1 justify-center items-center bg-black/60 px-6"
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-[24px] p-6 shadow-2xl"
+          >
+            <Text className="text-xl font-bold text-[#1F2937] mb-3 text-center">
+              {t("ai.chat.deleteAllConversations")}
+            </Text>
+            <Text className="text-[#6B7280] text-center mb-5">
+              {t("ai.chat.deleteAllConversationsMsg")}
+            </Text>
+
+            <View className="gap-3">
+              <TouchableOpacity
+                onPress={confirmDeleteAllConversations}
+                className="bg-[#ef4444] w-full py-3.5 rounded-xl"
+              >
+                <Text className="text-white text-center font-bold text-base">{t("ai.chat.confirmDeleteAll")}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowDeleteAllModal(false)}
+                className="py-2"
+              >
+                <Text className="text-gray-400 font-medium text-center">{t("account.cancel")}</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>

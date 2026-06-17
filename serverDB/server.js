@@ -15,7 +15,7 @@ mongoose
 
 // SCHEMA MONGOOSE
 const plantSchema = new mongoose.Schema({
-  userId: String,
+  userId: { type: String, required: true },
   name: { type: String, required: true },
   species: String,
   location: String,
@@ -80,7 +80,7 @@ app.get("/plants", async (req, res) => {
 
     console.log(`📥 Fetching plants for user: ${userId}`);
     const plants = await Plant.find({ userId: userId }).sort({ createdAt: -1 });
-    res.json(plants); 
+    res.json(plants);
   } catch (error) {
     console.error("Error reading plants:", error);
     res.status(500).json({ error: "Plants could not be retrieved." });

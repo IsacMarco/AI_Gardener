@@ -1,6 +1,7 @@
 import { initLlama, type LlamaContext, type CompletionParams, type TokenData, type RNLlamaOAICompatibleMessage } from "llama.rn";
 import { NativeModules, Platform } from "react-native";
 import { Directory, File, Paths } from "expo-file-system";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
 // ─── Model filenames (must match files in android/app/src/main/assets/) ─
 const MODEL_FILENAME = "Qwen3.5-2B.Q4_K_M.gguf";
@@ -110,7 +111,7 @@ export const initializeLocalModel = async (
 
       llamaContext = await initLlama({
         model: modelPath,
-        n_ctx: 2048,
+        n_ctx: 4096,
         n_gpu_layers: Platform.OS === "ios" ? 99 : 32, // Metal on iOS, conservative on Android
         use_mlock: true,
         flash_attn: Platform.OS === "ios", // Stable on iOS Metal, risky on some Android GPUs
@@ -144,13 +145,13 @@ export const initializeLocalModel = async (
  * @param messages - Array of messages in OpenAI-compatible format (role + content).
  *                   llama.rn will apply the ChatML template from the model's GGUF metadata.
  * @param onToken - Optional callback invoked for each generated token (streaming)
- * @param base64Image - Optional base64-encoded image for multimodal analysis
+ * @param imageUri - Optional image URI for multimodal analysis (file:// or content://)
  * @returns The full generated text
  */
 export const generateResponse = async (
   messages: RNLlamaOAICompatibleMessage[],
   onToken?: OnTokenCallback,
-  base64Image?: string | null,
+  imageUri?: string | null,
 ): Promise<string> => {
   if (!llamaContext) {
     throw new Error("Model not initialized. Call initializeLocalModel() first.");
@@ -163,7 +164,7 @@ export const generateResponse = async (
     const completionParams: CompletionParams = {
       messages,
       n_predict: 1024,
-      temperature: 0.7,
+      temperature: 0.3,
       top_p: 0.9,
       top_k: 40,
       enable_thinking: false, // Don't show <think>...</think> reasoning in output
@@ -174,11 +175,16 @@ export const generateResponse = async (
       ],
     };
 
-    // If there's an image, add it as a media path (data URI)
-    if (base64Image) {
-      completionParams.media_paths = [
-        `data:image/jpeg;base64,${base64Image}`,
-      ];
+    // If there's an image, resize it to 256x256 (the model's training resolution)
+    // and pass the file path directly — no base64 strings in JS memory
+    if (imageUri) {
+      const imageRef = await ImageManipulator.manipulate(imageUri)
+        .resize({ width: 256, height: 256 })
+        .renderAsync();
+      const resized = await imageRef.saveAsync({ format: SaveFormat.PNG });
+
+      const imagePath = resized.uri.replace("file://", "");
+      completionParams.media_paths = [imagePath];
     }
 
     // Run completion with streaming callback
