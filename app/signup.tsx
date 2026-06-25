@@ -1,11 +1,11 @@
-import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
-import {getAuth,
+import { AntDesign, Ionicons } from "@expo/vector-icons";
+import {
+  getAuth,
   createUserWithEmailAndPassword,
   signOut,
 } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { FirebaseError } from "firebase/app";
 import { AlertCircle, CheckCircle2, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -67,11 +67,15 @@ export default function SignUpScreen() {
     setSignUpStatus("loading");
     setModalVisible(true);
     try {
-      await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const usr = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      if (usr.user) {
+        await usr.user.updateProfile({
+          displayName: fullName,
+        });
+      }
       await signOut(auth);
       setSignUpStatus("success");
-    } catch (e: any) {
-      const err = e as FirebaseError;
+    } catch (err: any) {
       setSignUpStatus("error");
       if (err.code === "auth/email-already-in-use") {
         setSignUpErrorMessage(t("auth.signup.err.emailInUse"));
@@ -257,9 +261,9 @@ export default function SignUpScreen() {
                       <AntDesign name="google" size={24} color="#EA4335" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity className="w-12 h-12 rounded-full bg-[#3b5998] justify-center items-center shadow-md">
+                    {/* <TouchableOpacity className="w-12 h-12 rounded-full bg-[#3b5998] justify-center items-center shadow-md">
                       <FontAwesome name="facebook-f" size={24} color="white" />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                   </View>
                 </View>
               </View>

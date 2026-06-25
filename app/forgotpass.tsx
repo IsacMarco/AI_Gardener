@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import auth, { sendPasswordResetEmail } from "@react-native-firebase/auth";
+import { getAuth, sendPasswordResetEmail } from "@react-native-firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useI18n } from "../context/I18nContext";
 
 const { height } = Dimensions.get("window");
-
+const auth = getAuth();
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { t } = useI18n();
@@ -77,20 +77,7 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const signInMethods = await auth().fetchSignInMethodsForEmail(
-        normalizedEmail,
-      );
-
-      if (!signInMethods || signInMethods.length === 0) {
-        showModal(
-          t("auth.forgot.accountNotFound"),
-          t("auth.forgot.accountNotFoundMsg"),
-          "error",
-        );
-        return;
-      }
-
-      await sendPasswordResetEmail(auth(), normalizedEmail);
+      await sendPasswordResetEmail(auth, normalizedEmail);
       showModal(
         t("auth.forgot.checkInbox"),
         t("auth.forgot.checkInboxMsg", { email: normalizedEmail }),
@@ -101,8 +88,6 @@ export default function ForgotPasswordScreen() {
       let msg = t("auth.forgot.err.generic");
       if (error.code === "auth/invalid-email") {
         msg = t("auth.forgot.err.invalidFormat");
-      } else if (error.code === "auth/user-not-found") {
-        msg = t("auth.forgot.accountNotFoundMsg");
       }
       showModal(t("common.error"), msg, "error");
     } finally {

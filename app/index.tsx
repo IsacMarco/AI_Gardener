@@ -1,6 +1,5 @@
-import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import {
-  fetchSignInMethodsForEmail,
   getAuth,
   GoogleAuthProvider,
   signInWithCredential,
@@ -45,7 +44,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showSignupAction, setShowSignupAction] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [logInStatus, setLogInStatus] = useState<"idle" | "loading" | "error">(
     "idle",
@@ -57,15 +55,7 @@ export default function LoginScreen() {
 
   const handleCloseModal = () => {
     setModalVisible(false);
-    setShowSignupAction(false);
     setLogInStatus("idle");
-  };
-
-  const handleGoToSignup = () => {
-    setModalVisible(false);
-    setShowSignupAction(false);
-    setLogInStatus("idle");
-    router.push("/signup");
   };
 
   const getLoginErrorMessage = (errorCode?: string) => {
@@ -93,26 +83,10 @@ export default function LoginScreen() {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       setLogInStatus("idle");
     } catch (error: any) {
-      let normalizedCode = error?.code as string | undefined;
-
-      if (
-        normalizedCode === "auth/invalid-credential" ||
-        normalizedCode === "auth/wrong-password"
-      ) {
-        try {
-          const methods = await fetchSignInMethodsForEmail(auth, email.trim());
-          normalizedCode = methods.length === 0 ? "auth/user-not-found" : "auth/wrong-password";
-        } catch {
-          // If this lookup fails, keep original code.
-        }
-      }
-
-      if (error?.code !== "auth/invalid-credential") {
-        console.warn("Login error:", error?.code || error?.message || error);
-      }
+      const errorCode = error?.code as string | undefined;
+      console.warn("Login error:", errorCode || error?.message || error);
       setLogInStatus("error");
-      setShowSignupAction(normalizedCode === "auth/user-not-found");
-      setErrorMessage(getLoginErrorMessage(normalizedCode));
+      setErrorMessage(getLoginErrorMessage(errorCode));
       setModalVisible(true);
     }
   };
@@ -273,10 +247,6 @@ export default function LoginScreen() {
                   >
                     <AntDesign name="google" size={24} color="#EA4335" />
                   </TouchableOpacity>
-
-                  <TouchableOpacity className="w-12 h-12 rounded-full bg-[#3b5998] justify-center items-center shadow-md">
-                    <FontAwesome name="facebook-f" size={24} color="white" />
-                  </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -313,16 +283,14 @@ export default function LoginScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  className={`w-full py-4 rounded-full items-center shadow-sm ${showSignupAction ? "bg-[#5F7A4B]" : "bg-gray-100"}`}
-                  onPress={showSignupAction ? handleGoToSignup : handleCloseModal}
+                  className="w-full py-4 rounded-full items-center shadow-sm bg-gray-100"
+                  onPress={handleCloseModal}
                 >
                   <Text
                     numberOfLines={2}
-                    className={`font-bold text-base text-center px-2 ${showSignupAction ? "text-white" : "text-[#1F2937]"}`}
+                    className="font-bold text-base text-center px-2 text-[#1F2937]"
                   >
-                    {showSignupAction
-                      ? t("auth.login.createAccount")
-                      : t("auth.login.tryAgain")}
+                    {t("auth.login.tryAgain")}
                   </Text>
                 </TouchableOpacity>
               </>
