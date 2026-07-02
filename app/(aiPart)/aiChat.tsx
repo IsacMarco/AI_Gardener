@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
 import { Directory, File, Paths } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -102,10 +103,13 @@ type PersistedChatStore = {
   updatedAt: number;
 };
 
-const CHAT_STORE_KEY = "ai_chat_store_v1";
+const CHAT_STORE_KEY_PREFIX = "ai_chat_store_v1";
 const CHAT_STORE_VERSION = 1;
-const CHAT_IMAGES_DIR_NAME = "chat-images";
-const mmkvStorage = createMMKV({ id: "ai-chat-storage" });
+const CHAT_IMAGES_DIR_PREFIX = "chat-images";
+
+const getChatStoreKey = (uid: string) => `${CHAT_STORE_KEY_PREFIX}_${uid}`;
+const getChatImagesDirName = (uid: string) => `${CHAT_IMAGES_DIR_PREFIX}-${uid}`;
+const getMMKVStorage = (uid: string) => createMMKV({ id: `ai-chat-storage-${uid}` });
 
 const createDefaultConversation = (welcomeText: string): Conversation => ({
   id: "conv-1",
@@ -144,9 +148,10 @@ const parsePersistedChatStore = (raw: string | null): PersistedChatStore | null 
   }
 };
 
-const readChatStore = async (): Promise<PersistedChatStore | null> => {
+const readChatStore = async (uid: string): Promise<PersistedChatStore | null> => {
   try {
-    const raw = mmkvStorage.getString(CHAT_STORE_KEY);
+    const storage = getMMKVStorage(uid);
+    const raw = storage.getString(getChatStoreKey(uid));
     return parsePersistedChatStore(raw ?? null);
   } catch (error) {
     console.error("Chat read error:", error);
@@ -154,22 +159,23 @@ const readChatStore = async (): Promise<PersistedChatStore | null> => {
   }
 };
 
-const writeChatStore = async (payload: PersistedChatStore) => {
+const writeChatStore = async (uid: string, payload: PersistedChatStore) => {
   try {
+    const storage = getMMKVStorage(uid);
     const serialized = JSON.stringify(payload);
-    mmkvStorage.set(CHAT_STORE_KEY, serialized);
+    storage.set(getChatStoreKey(uid), serialized);
   } catch (error) {
     console.error("Chat write error:", error);
   }
 };
 
-const getChatImagesDirectory = () => {
+const getChatImagesDirectory = (uid: string) => {
   if (Platform.OS === "web") return null;
-  return new Directory(Paths.document, CHAT_IMAGES_DIR_NAME);
+  return new Directory(Paths.document, getChatImagesDirName(uid));
 };
 
-const ensureChatImagesDirectory = async () => {
-  const directory = getChatImagesDirectory();
+const ensureChatImagesDirectory = async (uid: string) => {
+  const directory = getChatImagesDirectory(uid);
   if (!directory) return null;
 
   try {
@@ -190,10 +196,10 @@ const getImageExtensionFromUri = (uri: string) => {
   return extension;
 };
 
-const persistImageUri = async (sourceUri: string): Promise<string> => {
+const persistImageUri = async (uid: string, sourceUri: string): Promise<string> => {
   if (Platform.OS === "web") return sourceUri;
 
-  const directory = await ensureChatImagesDirectory();
+  const directory = await ensureChatImagesDirectory(uid);
   if (!directory) return sourceUri;
 
   const extension = getImageExtensionFromUri(sourceUri);
@@ -205,10 +211,10 @@ const persistImageUri = async (sourceUri: string): Promise<string> => {
   return destinationFile.uri;
 };
 
-const deleteManagedImageIfExists = async (uri?: string | null) => {
+const deleteManagedImageIfExists = async (uid: string, uri?: string | null) => {
   if (!uri || Platform.OS === "web") return;
 
-  const directory = getChatImagesDirectory();
+  const directory = getChatImagesDirectory(uid);
   if (!directory || !uri.startsWith(directory.uri)) return;
 
   try {
@@ -246,6 +252,10 @@ export default function AiHelperScreen() {
   ]);
   const [activeConversationId, setActiveConversationId] = useState("conv-1");
   const [isChatStoreHydrated, setIsChatStoreHydrated] = useState(false);
+  const [currentUserUid, setCurrentUserUid] = useState<string | null>(
+    () => getAuth().currentUser?.uid ?? null,
+  );
+  const currentUserUidRef = useRef(currentUserUid);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
@@ -292,11 +302,33 @@ export default function AiHelperScreen() {
     }
   }, [language, languageOptions]);
 
+  // Track auth state changes to scope chat storage per user
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const uid = user?.uid ?? null;
+      setCurrentUserUid(uid);
+      currentUserUidRef.current = uid;
+    });
+    return unsubscribe;
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
+    if (!currentUserUid) {
+      // No user logged in — reset to default
+      const fallbackConversation = createDefaultConversation(t("ai.chat.welcome"));
+      setConversations([fallbackConversation]);
+      setActiveConversationId(fallbackConversation.id);
+      setIsChatStoreHydrated(true);
+      return;
+    }
+
+    setIsChatStoreHydrated(false);
+
     const hydrateChatStore = async () => {
-      const persistedStore = await readChatStore();
+      const persistedStore = await readChatStore(currentUserUid);
       if (!isMounted) return;
 
       if (persistedStore && persistedStore.conversations.length > 0) {
@@ -324,13 +356,13 @@ export default function AiHelperScreen() {
     return () => {
       isMounted = false;
     };
-  }, [t]);
+  }, [currentUserUid, t]);
 
   useEffect(() => {
-    if (!isChatStoreHydrated) return;
+    if (!isChatStoreHydrated || !currentUserUid) return;
 
     const persistChats = async () => {
-      await writeChatStore({
+      await writeChatStore(currentUserUid, {
         version: CHAT_STORE_VERSION,
         activeConversationId,
         conversations,
@@ -339,7 +371,7 @@ export default function AiHelperScreen() {
     };
 
     persistChats();
-  }, [activeConversationId, conversations, isChatStoreHydrated]);
+  }, [activeConversationId, conversations, isChatStoreHydrated, currentUserUid]);
 
   const plantsContextForPrompt = useMemo(() => {
     const header = "=== USER PLANTS CONTEXT (From App Data) ===\n";
@@ -394,7 +426,7 @@ export default function AiHelperScreen() {
   };
 
   const createNewConversation = () => {
-    void deleteManagedImageIfExists(selectedImage);
+    if (currentUserUidRef.current) void deleteManagedImageIfExists(currentUserUidRef.current, selectedImage);
 
     const newConversationId = `conv-${Date.now()}`;
     const newConversation: Conversation = {
@@ -420,7 +452,7 @@ export default function AiHelperScreen() {
   };
 
   const selectConversation = (conversationId: string) => {
-    void deleteManagedImageIfExists(selectedImage);
+    if (currentUserUidRef.current) void deleteManagedImageIfExists(currentUserUidRef.current, selectedImage);
 
     setActiveConversationId(conversationId);
     setSelectedImage(null);
@@ -495,13 +527,13 @@ export default function AiHelperScreen() {
     if (conversationToDelete) {
       const imageUrisToDelete = collectConversationImageUris(conversationToDelete);
       await Promise.all(
-        imageUrisToDelete.map((imageUri) => deleteManagedImageIfExists(imageUri)),
+        imageUrisToDelete.map((imageUri) => currentUserUidRef.current ? deleteManagedImageIfExists(currentUserUidRef.current, imageUri) : Promise.resolve()),
       );
     }
 
     setShowDeleteConversationModal(false);
     setConversationActionId("");
-    void deleteManagedImageIfExists(selectedImage);
+    if (currentUserUidRef.current) void deleteManagedImageIfExists(currentUserUidRef.current, selectedImage);
     setSelectedImage(null);
     setSelectedBase64(null);
   };
@@ -517,12 +549,12 @@ export default function AiHelperScreen() {
 
     // Clean up managed images
     await Promise.all(
-      allImageUris.map((uri) => deleteManagedImageIfExists(uri)),
+      allImageUris.map((uri) => currentUserUidRef.current ? deleteManagedImageIfExists(currentUserUidRef.current, uri) : Promise.resolve()),
     );
 
     setShowDeleteAllModal(false);
     setShowConversationPicker(false);
-    void deleteManagedImageIfExists(selectedImage);
+    if (currentUserUidRef.current) void deleteManagedImageIfExists(currentUserUidRef.current, selectedImage);
     setSelectedImage(null);
     setSelectedBase64(null);
   };
@@ -738,11 +770,13 @@ export default function AiHelperScreen() {
         exif: false,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
-        const persistedImageUri = await persistImageUri(result.assets[0].uri);
-        if (selectedImage && selectedImage !== persistedImageUri) {
-          void deleteManagedImageIfExists(selectedImage);
+        const uid = currentUserUidRef.current;
+        if (!uid) return;
+        const persistedUri = await persistImageUri(uid, result.assets[0].uri);
+        if (selectedImage && selectedImage !== persistedUri) {
+          void deleteManagedImageIfExists(uid, selectedImage);
         }
-        setSelectedImage(persistedImageUri);
+        setSelectedImage(persistedUri);
       }
     };
 
@@ -786,11 +820,13 @@ export default function AiHelperScreen() {
       exif: false,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      const persistedImageUri = await persistImageUri(result.assets[0].uri);
-      if (selectedImage && selectedImage !== persistedImageUri) {
-        void deleteManagedImageIfExists(selectedImage);
+      const uid = currentUserUidRef.current;
+      if (!uid) return;
+      const persistedUri = await persistImageUri(uid, result.assets[0].uri);
+      if (selectedImage && selectedImage !== persistedUri) {
+        void deleteManagedImageIfExists(uid, selectedImage);
       }
-      setSelectedImage(persistedImageUri);
+      setSelectedImage(persistedUri);
     }
   };
 
@@ -1082,7 +1118,7 @@ export default function AiHelperScreen() {
                   />
                   <TouchableOpacity
                     onPress={() => {
-                      void deleteManagedImageIfExists(selectedImage);
+                      if (currentUserUidRef.current) void deleteManagedImageIfExists(currentUserUidRef.current, selectedImage);
                       setSelectedImage(null);
                       setSelectedBase64(null);
                     }}

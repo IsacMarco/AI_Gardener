@@ -200,6 +200,7 @@ const AccountScreen = () => {
       await Notifications.cancelAllScheduledNotificationsAsync();
       console.log("🔒 Notifications cleared for logout.");
       await signOut(auth);
+      await setLanguage("en-US");
       router.replace("/");
     } catch (error) {
       console.error("Error signing out: ", error);

@@ -97,6 +97,13 @@ export default function LoginScreen() {
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
+
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignoram in caz ca nu e nimeni logat
+      }
+
       const response = await GoogleSignin.signIn();
       const result: any = response;
       const idToken = result.data?.idToken || result.idToken;

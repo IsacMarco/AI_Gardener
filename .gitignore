@@ -4,6 +4,9 @@
 # dependencies
 node_modules/
 assets/qwen_finetune_mobile_gguf/
+.easignore
+eas.json
+
 
 # Expo
 .expo/
@@ -43,7 +46,7 @@ app-example
 
 .env
 
-# sensitive files
+# Firebase config files - safe to commit (public config, not secrets)
 google-services.json
 GoogleService-Info.plist
 

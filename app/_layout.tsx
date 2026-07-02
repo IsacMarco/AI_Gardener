@@ -10,6 +10,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PlantProvider } from "@/context/PlantContext";
 import { I18nProvider } from "@/context/I18nContext";
+import * as SplashScreen from "expo-splash-screen";
+
+SplashScreen.preventAutoHideAsync();
 
 const auth = getAuth();
 
@@ -20,7 +23,12 @@ export default function RootLayout() {
   const segments = useSegments();
   const handleAuthStateChanged = (user: FirebaseAuthTypes.User | null) => {
     setUser(user);
-    if (initializing) setInitializing(false);
+    if (initializing) {
+      setInitializing(false);
+      setTimeout(async () => {
+        await SplashScreen.hideAsync();
+      }, 100);
+    }
   };
 
   useEffect(() => {
