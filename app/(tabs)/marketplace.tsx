@@ -127,7 +127,7 @@ const CATEGORY_CONFIDENCE_THRESHOLD = 5;
 const GLOBAL_CONFIDENCE_THRESHOLD = 7;
 const MIN_STRICT_RESULTS = 4;
 const LANDSCAPING_CONFIDENCE_THRESHOLD = 6;
-const OSM_REQUEST_TIMEOUT_MS = 9000;
+const OSM_REQUEST_TIMEOUT_MS = 10000;
 const OSM_CACHE_TTL_MS = 5 * 60 * 1000;
 const MARKETPLACE_CACHE_KEY = "marketplace_cached_results_v1";
 const LOCATION_REFETCH_THRESHOLD_METERS = 500;
@@ -838,9 +838,10 @@ out center tags;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
-            "Content-Type": "text/plain",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "AI_Gardener/1.0 (Expo; React Native)",
           },
-          body: query,
+          body: `data=${encodeURIComponent(query)}`,
           signal: controller.signal,
         });
 
@@ -1378,11 +1379,10 @@ out center tags;
                               ]}
                             >
                               <View
-                                className={`rounded-full border-2 border-white ${
-                                  selectedMapShop?.id === shop.id
+                                className={`rounded-full border-2 border-white ${selectedMapShop?.id === shop.id
                                     ? "w-5 h-5 bg-[#365237]"
                                     : "w-3.5 h-3.5 bg-[#5F7A4B]"
-                                }`}
+                                  }`}
                               />
                             </PointAnnotation>
                           ))}
@@ -1442,16 +1442,14 @@ out center tags;
                             <TouchableOpacity
                               key={option}
                               onPress={() => setRadiusMeters(option)}
-                              className={`px-4 py-2 rounded-full border ${
-                                isActive
+                              className={`px-4 py-2 rounded-full border ${isActive
                                   ? "bg-[#5F7A4B] border-[#5F7A4B]"
                                   : "bg-white/80 border-white/60"
-                              }`}
+                                }`}
                             >
                               <Text
-                                className={`text-sm font-semibold ${
-                                  isActive ? "text-white" : "text-[#1F2937]"
-                                }`}
+                                className={`text-sm font-semibold ${isActive ? "text-white" : "text-[#1F2937]"
+                                  }`}
                               >
                                 {option / 1000} km
                               </Text>
@@ -1472,17 +1470,15 @@ out center tags;
                             <TouchableOpacity
                               key={category.id}
                               onPress={() => toggleCategory(category.id)}
-                              className={`px-3 py-2 rounded-full border ${
-                                isActive
+                              className={`px-3 py-2 rounded-full border ${isActive
                                   ? "bg-[#5F7A4B] border-[#5F7A4B]"
                                   : "bg-white/80 border-white/60"
-                              }`}
+                                }`}
                             >
                               <Text
                                 numberOfLines={1}
-                                className={`text-xs font-semibold ${
-                                  isActive ? "text-white" : "text-[#1F2937]"
-                                }`}
+                                className={`text-xs font-semibold ${isActive ? "text-white" : "text-[#1F2937]"
+                                  }`}
                               >
                                 {getCategoryLabel(category.id)}
                               </Text>
@@ -1504,36 +1500,32 @@ out center tags;
                         <View className="flex-row mt-3">
                           <TouchableOpacity
                             onPress={() => setSortMode("relevance")}
-                            className={`px-3 py-1.5 rounded-full mr-2 border ${
-                              sortMode === "relevance"
+                            className={`px-3 py-1.5 rounded-full mr-2 border ${sortMode === "relevance"
                                 ? "bg-[#5F7A4B] border-[#5F7A4B]"
                                 : "bg-white border-gray-200"
-                            }`}
+                              }`}
                           >
                             <Text
-                              className={`text-xs font-semibold ${
-                                sortMode === "relevance"
+                              className={`text-xs font-semibold ${sortMode === "relevance"
                                   ? "text-white"
                                   : "text-[#1F2937]"
-                              }`}
+                                }`}
                             >
                               {t("marketplace.relevance")}
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             onPress={() => setSortMode("distance")}
-                            className={`px-3 py-1.5 rounded-full border ${
-                              sortMode === "distance"
+                            className={`px-3 py-1.5 rounded-full border ${sortMode === "distance"
                                 ? "bg-[#5F7A4B] border-[#5F7A4B]"
                                 : "bg-white border-gray-200"
-                            }`}
+                              }`}
                           >
                             <Text
-                              className={`text-xs font-semibold ${
-                                sortMode === "distance"
+                              className={`text-xs font-semibold ${sortMode === "distance"
                                   ? "text-white"
                                   : "text-[#1F2937]"
-                              }`}
+                                }`}
                             >
                               {t("marketplace.distance")}
                             </Text>
@@ -1572,17 +1564,15 @@ out center tags;
                                   onPress={() =>
                                     setSelectedResultCategoryId(category.id)
                                   }
-                                  className={`mr-2 px-4 py-2 rounded-full border ${
-                                    isSelected
+                                  className={`mr-2 px-4 py-2 rounded-full border ${isSelected
                                       ? "bg-[#5F7A4B] border-[#5F7A4B]"
                                       : "bg-white border-white/70"
-                                  }`}
+                                    }`}
                                 >
                                   <Text
                                     numberOfLines={1}
-                                    className={`text-xs font-semibold ${
-                                      isSelected ? "text-white" : "text-[#1F2937]"
-                                    }`}
+                                    className={`text-xs font-semibold ${isSelected ? "text-white" : "text-[#1F2937]"
+                                      }`}
                                   >
                                     {getCategoryLabel(category.id)} ({count})
                                   </Text>
